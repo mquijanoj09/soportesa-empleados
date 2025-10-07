@@ -32,6 +32,7 @@ export interface Capacitacion {
   "Primer Apellido": string;
   "Segundo Apellido": string;
   NombreCompleto: string;
+  Cedula: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
           p.\`Segundo Nombre\`,
           p.\`Primer Apellido\`,
           p.\`Segundo Apellido\`,
+          p.\`Numero Identificacion\` as Cedula,
           CONCAT_WS(' ', 
             TRIM(p.\`Primer Nombre\`), 
             TRIM(p.\`Segundo Nombre\`), 
@@ -125,6 +127,7 @@ export async function GET(request: NextRequest) {
         "Primer Apellido": row["Primer Apellido"] || "",
         "Segundo Apellido": row["Segundo Apellido"] || "",
         NombreCompleto: row.NombreCompleto || "Nombre no disponible",
+        Cedula: row.Cedula || "N/A",
       }));
 
       const totalPages = Math.ceil(totalRecords / limit);

@@ -3,154 +3,388 @@
 import type { Course } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { Edit, Trash2, Copy, Mail, MailX, Eye } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Edit,
+  Trash2,
+  Copy,
+  Calendar,
+  GraduationCap,
+  Clock,
+  Monitor,
+  Building2,
+  MoreVertical,
+  MessageCircleQuestion,
+} from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
-import CourseQuestions from "./course-questions";
-import { useCourse } from "@/app/context/useCourse";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 interface CourseCardProps {
   course: Course;
 }
 
+// Static data for now - will be replaced with actual data later
+const getCourseStaticData = (courseId: number) => ({
+  totalPreguntas: 15,
+  entidad: "Instituto Nacional de Capacitación",
+  horas: 40,
+  modalidad: "Virtual",
+  programacion: "07/22", // MM/YY format
+  antiguedad: "2 años",
+  clasificacion: "Capacitación Técnica - Desarrollo Profesional",
+  ciudad: "Bogotá",
+});
+
 export function CourseCard({ course }: CourseCardProps) {
-  const [showDetails, setShowDetails] = useState(false);
-  const [fullCourseData, setFullCourseData] = useState<Course | null>(null);
-  const [loadingDetails, setLoadingDetails] = useState(false);
+  const router = useRouter();
+  const staticData = getCourseStaticData(course.Id);
 
-  useEffect(() => {
-    if (showDetails) {
-      // Disable background scrolling when modal is open
-      document.body.style.overflow = "hidden";
-    } else {
-      // Re-enable background scrolling when modal is closed
-      document.body.style.overflow = "auto";
-    }
-  }, [showDetails]);
+  // Modal states
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const handleSetShowDetails = () => {
-    setShowDetails(!showDetails);
+  // Form states for edit modal
+  const [editForm, setEditForm] = useState({
+    nombre: course.Nombre,
+    entidad: staticData.entidad,
+    horas: staticData.horas.toString(),
+    modalidad: staticData.modalidad,
+    programacion: staticData.programacion,
+    antiguedad: staticData.antiguedad,
+    clasificacion: staticData.clasificacion,
+    ciudad: staticData.ciudad,
+  });
+
+  const handleCardClick = () => {
+    router.push(`/capacitaciones/${course.Id}`);
   };
 
-  const handleViewDetails = async () => {
-    setLoadingDetails(true);
-    try {
-      // Fetch full course details including questions and videos
-      const response = await fetch(`/api/cursos?id=${course.Id}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          toast.error("Curso no encontrado");
-        } else {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return;
-      }
-      const fullCourse: Course = await response.json();
-      setFullCourseData(fullCourse);
-      setShowDetails(true);
-    } catch (error) {
-      console.error("Error fetching course details:", error);
-      toast.error("Error al cargar los detalles del curso");
-    } finally {
-      setLoadingDetails(false);
-    }
+  const handleButtonClick = (e: React.MouseEvent, action: () => void) => {
+    e.stopPropagation(); // Prevent card click when clicking buttons
+    action();
+  };
+
+  const handleEditSubmit = () => {
+    // TODO: Implement actual edit functionality
+    toast.success("Funcionalidad de edición en desarrollo");
+    setIsEditOpen(false);
+  };
+
+  const handleDeleteConfirm = () => {
+    // TODO: Implement actual delete functionality
+    toast.success("Funcionalidad de eliminación en desarrollo");
+    setIsDeleteOpen(false);
+  };
+
+  const handleDuplicate = () => {
+    // TODO: Implement actual duplicate functionality
+    toast.success("Curso duplicado (funcionalidad en desarrollo)");
   };
 
   return (
     <div>
-      <Card className="group min-h-full gap-0 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-primary flex flex-col">
-        <CardHeader className="pb-3 flex-1">
-          <CardTitle className="font-playfair text-lg text-primary mb-2 line-clamp-2">
-            {course.Nombre}
-          </CardTitle>
-          <div className="flex flex-col justify-end h-full gap-2 text-sm text-muted-foreground">
-            <span className="font-medium">ID: {course.Id}</span>
+      <Card
+        className="group min-h-full gap-0 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-primary flex flex-col cursor-pointer"
+        onClick={handleCardClick}
+      >
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="font-playfair text-lg text-primary line-clamp-1 mb-1">
+                {course.Nombre}
+              </CardTitle>
+              <Badge variant="secondary" className="text-sm">
+                ID: {course.Id}
+              </Badge>
+            </div>
+            {/* Action Menu */}
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) =>
+                  handleButtonClick(e, () => {
+                    setIsEditOpen(true);
+                  })
+                }
+                className="h-7 w-7 p-0 hover:bg-primary/10"
+              >
+                <Edit className="w-3 h-3 text-primary" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) =>
+                  handleButtonClick(e, () => {
+                    handleDuplicate();
+                  })
+                }
+                className="h-7 w-7 p-0 hover:bg-blue-500/10"
+              >
+                <Copy className="w-3 h-3 text-blue-500" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) =>
+                  handleButtonClick(e, () => {
+                    setIsDeleteOpen(true);
+                  })
+                }
+                className="h-7 w-7 p-0 hover:bg-destructive/10"
+              >
+                <Trash2 className="w-3 h-3 text-destructive" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4 mt-auto">
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-2 pt-3 border-t">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleViewDetails}
-              disabled={loadingDetails}
-              className="col-span-2 mb-2"
-            >
-              {loadingDetails ? (
-                <>
-                  <Spinner size="sm" className="mr-2" />
-                  Cargando...
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3 h-3 mr-1" />
-                  Ver Detalles del Curso
-                </>
-              )}
-            </Button>
+        <CardContent className="py-0">
+          {/* Course Information - Ultra Compact */}
+          <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-sm">
+            {/* Row 1: Total Preguntas y Entidad */}
+            <div className="flex items-center gap-1">
+              <MessageCircleQuestion className="w-3 h-3 text-primary shrink-0" />
+              <span className="text-muted-foreground">Preguntas:</span>
+              <span className="text-foreground font-medium">
+                {course.preguntas?.length || staticData.totalPreguntas}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-primary shrink-0" />
+              <span className="text-foreground font-medium truncate">
+                {staticData.entidad}
+              </span>
+            </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                toast.error("Funcionalidad en desarrollo");
-              }}
-              className="flex-1 min-w-0 col-span-2"
-            >
-              <Mail className="w-3 h-3 mr-1" />
-              Email
-            </Button>
+            {/* Row 2: Horas y Modalidad */}
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3 text-primary shrink-0" />
+              <span className="text-muted-foreground">Horas:</span>
+              <span className="text-foreground font-medium">
+                {staticData.horas}h
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Monitor className="w-3 h-3 text-primary shrink-0" />
+              <span className="text-muted-foreground">Modalidad:</span>
+              <span className="text-foreground font-medium">
+                {staticData.modalidad}
+              </span>
+            </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                toast.error("Funcionalidad en desarrollo");
-              }}
-              className="flex-1 min-w-0 col-span-2"
-            >
-              <MailX className="w-3 h-3 mr-1" />
-              No Graduados
-            </Button>
+            {/* Row 3: Programación y Antigüedad */}
+            <div className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-primary shrink-0" />
+              <span className="text-muted-foreground">Prog:</span>
+              <span className="text-foreground font-medium">
+                {staticData.programacion}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <GraduationCap className="w-3 h-3 text-primary shrink-0" />
+              <span className="text-muted-foreground">Antigüedad:</span>
+              <span className="text-foreground font-medium">
+                {staticData.antiguedad}
+              </span>
+            </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                toast.error("Funcionalidad en desarrollo");
-              }}
-              className="flex-1 min-w-0"
-            >
-              <Edit className="w-3 h-3 mr-1" />
-              Editar
-            </Button>
+            {/* Row 4: Ciudad */}
+            <div className="flex items-center gap-1 col-span-2">
+              <Building2 className="w-3 h-3 text-primary shrink-0" />
+              <span className="text-muted-foreground">Ciudad:</span>
+              <span className="text-foreground font-medium">
+                {staticData.ciudad}
+              </span>
+            </div>
+          </div>
 
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                toast.error("Funcionalidad en desarrollo");
-              }}
-              className="flex-1 min-w-0"
-            >
-              <Trash2 className="w-3 h-3 mr-1" />
-              Eliminar
-            </Button>
+          {/* Classification - Single Line */}
+          <div className="mt-2 pt-2 border-t border-muted/50 text-sm">
+            <div className="text-muted-foreground truncate">
+              <strong>Clasificación:</strong> {staticData.clasificacion}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Course Questions */}
-      {fullCourseData && (
-        <CourseQuestions
-          course={fullCourseData}
-          showDetails={showDetails}
-          setShowDetails={handleSetShowDetails}
-        />
-      )}
+      {/* Edit Modal */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Curso</DialogTitle>
+            <DialogDescription>
+              Modifica la información del curso. Los cambios se guardarán al
+              confirmar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nombre" className="text-right">
+                Nombre
+              </Label>
+              <Input
+                id="nombre"
+                value={editForm.nombre}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, nombre: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="entidad" className="text-right">
+                Entidad
+              </Label>
+              <Input
+                id="entidad"
+                value={editForm.entidad}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, entidad: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="horas" className="text-right">
+                Horas
+              </Label>
+              <Input
+                id="horas"
+                type="number"
+                value={editForm.horas}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, horas: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="modalidad" className="text-right">
+                Modalidad
+              </Label>
+              <Input
+                id="modalidad"
+                value={editForm.modalidad}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, modalidad: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="programacion" className="text-right">
+                Programación
+              </Label>
+              <Input
+                id="programacion"
+                placeholder="MM/YY"
+                value={editForm.programacion}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, programacion: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="antiguedad" className="text-right">
+                Antigüedad
+              </Label>
+              <Input
+                id="antiguedad"
+                value={editForm.antiguedad}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, antiguedad: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="ciudad" className="text-right">
+                Ciudad
+              </Label>
+              <Input
+                id="ciudad"
+                value={editForm.ciudad}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, ciudad: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="clasificacion" className="text-right">
+                Clasificación
+              </Label>
+              <Input
+                id="clasificacion"
+                value={editForm.clasificacion}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, clasificacion: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleEditSubmit}>
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar el curso "{course.Nombre}"?
+              <br />
+              <span className="text-destructive font-medium">
+                Esta acción no se puede deshacer.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

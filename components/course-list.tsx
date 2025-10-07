@@ -73,7 +73,7 @@ export function CourseList() {
       {!state.loading && (
         <>
           {filteredCourses.length > 0 ? (
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 grid-cols-1">
+            <div className="flex flex-col gap-3">
               {filteredCourses.map((course) => (
                 <CourseCard key={course.Id} course={course} />
               ))}

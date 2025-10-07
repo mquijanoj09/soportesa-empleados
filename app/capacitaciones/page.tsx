@@ -17,7 +17,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto p-8 space-y-8">
+      <div className="container mx-auto px-6 py-12">
         {/* Header */}
         <div className="text-center space-y-6 mb-12">
           <Link
