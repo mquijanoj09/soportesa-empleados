@@ -23,7 +23,7 @@ interface CourseContentProps {
 export function CourseContent({ course }: CourseContentProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({
-    texto: course.Texto,
+    texto: course.Texto || "",
     induccionVideo: course.InduccionVideo || "",
     induccionVideo2: course.InduccionVideo2 || "",
     induccionVideo3: course.InduccionVideo3 || "",
@@ -56,7 +56,7 @@ export function CourseContent({ course }: CourseContentProps) {
           </Button>
         </div>
         <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
-          {course.Texto}
+          {course.Texto || "No hay descripción disponible"}
         </p>
       </div>
 

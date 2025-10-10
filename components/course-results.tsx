@@ -1,60 +1,265 @@
 "use client";
 
 import { Course, Capacitacion } from "@/types";
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   CheckCircle2,
   XCircle,
   Mail,
-  ChevronLeft,
-  ChevronRight,
-  Edit,
+  Search,
+  Users,
+  UserCheck,
+  UserX,
+  UserMinus,
+  Filter,
+  ArrowUpDown,
+  X as XIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+
+type SortOption =
+  | "id-asc"
+  | "id-desc"
+  | "nombre-asc"
+  | "nombre-desc"
+  | "nota-asc"
+  | "nota-desc";
+
+interface FilterValues {
+  realizado: string;
+  graduado: string;
+  impreso: string;
+}
 
 interface CourseResultsProps {
   course: Course;
 }
 
 export function CourseResults({ course }: CourseResultsProps) {
-  const [capacitaciones, setCapacitaciones] = useState<Capacitacion[]>([]);
+  const [allCapacitaciones, setAllCapacitaciones] = useState<Capacitacion[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalRecords, setTotalRecords] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState<SortOption>("id-desc");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [displayCount, setDisplayCount] = useState(50);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [filters, setFilters] = useState<FilterValues>({
+    realizado: "",
+    graduado: "",
+    impreso: "",
+  });
 
+  // Filter capacitaciones based on search term and filters
+  const filteredCapacitaciones = useMemo(() => {
+    let result = allCapacitaciones;
+
+    // Apply search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      result = result.filter((cap) => {
+        const id = cap.Id?.toString() || "";
+        const cedula = cap.Cedula?.toLowerCase() || "";
+        const nombre = cap.NombreCompleto?.toLowerCase() || "";
+
+        return (
+          id.includes(search) ||
+          cedula.includes(search) ||
+          nombre.includes(search)
+        );
+      });
+    }
+
+    // Apply filters
+    if (filters.realizado) {
+      const filterValue = filters.realizado === "true";
+      result = result.filter((cap) => cap.Realizado === filterValue);
+    }
+    if (filters.graduado) {
+      const filterValue = filters.graduado === "true";
+      result = result.filter((cap) => cap.Graduado === filterValue);
+    }
+    if (filters.impreso) {
+      const filterValue = filters.impreso === "true";
+      result = result.filter((cap) => cap.Impreso === filterValue);
+    }
+
+    return result;
+  }, [allCapacitaciones, searchTerm, filters]);
+
+  // Sort filtered capacitaciones
+  const sortedCapacitaciones = useMemo(() => {
+    return [...filteredCapacitaciones].sort((a, b) => {
+      switch (sortOption) {
+        case "id-asc":
+          return a.Id - b.Id;
+        case "id-desc":
+          return b.Id - a.Id;
+        case "nombre-asc":
+          return (a.NombreCompleto || "").localeCompare(b.NombreCompleto || "");
+        case "nombre-desc":
+          return (b.NombreCompleto || "").localeCompare(a.NombreCompleto || "");
+        case "nota-asc":
+          return (a.Nota || 0) - (b.Nota || 0);
+        case "nota-desc":
+          return (b.Nota || 0) - (a.Nota || 0);
+        default:
+          return 0;
+      }
+    });
+  }, [filteredCapacitaciones, sortOption]);
+
+  // Get displayed capacitaciones (limited by displayCount)
+  const displayedCapacitaciones = useMemo(() => {
+    return sortedCapacitaciones.slice(0, displayCount);
+  }, [sortedCapacitaciones, displayCount]);
+
+  const hasMore = displayCount < sortedCapacitaciones.length;
+
+  const activeFiltersCount = Object.values(filters).filter(
+    (value) => value !== ""
+  ).length;
+
+  const handleClearFilters = () => {
+    setFilters({
+      realizado: "",
+      graduado: "",
+      impreso: "",
+    });
+  };
+
+  // Calculate chart data from ALL capacitaciones
+  const chartData = useMemo(() => {
+    const passed = allCapacitaciones.filter((cap) => cap.Graduado).length;
+    const failed = allCapacitaciones.filter(
+      (cap) => !cap.Graduado && cap.Realizado
+    ).length;
+    const notPresented = allCapacitaciones.filter(
+      (cap) => !cap.Realizado
+    ).length;
+    const total = allCapacitaciones.length;
+
+    return [
+      {
+        name: "Aprobaron",
+        value: passed,
+        percentage: total > 0 ? ((passed / total) * 100).toFixed(1) : "0",
+        color: "#10B981",
+        icon: UserCheck,
+      },
+      {
+        name: "Reprobaron",
+        value: failed,
+        percentage: total > 0 ? ((failed / total) * 100).toFixed(1) : "0",
+        color: "#EF4444",
+        icon: UserX,
+      },
+      {
+        name: "No presentaron",
+        value: notPresented,
+        percentage: total > 0 ? ((notPresented / total) * 100).toFixed(1) : "0",
+        color: "#6B7280",
+        icon: UserMinus,
+      },
+    ].filter((item) => item.value > 0);
+  }, [allCapacitaciones]);
+
+  // Fetch all capacitaciones
   useEffect(() => {
-    fetchCapacitaciones();
-  }, [course.Id, currentPage]);
+    fetchAllCapacitaciones();
+  }, []);
 
-  const fetchCapacitaciones = async () => {
+  // Load more capacitaciones callback
+  const loadMoreCapacitaciones = useCallback(() => {
+    if (displayCount < sortedCapacitaciones.length) {
+      setDisplayCount((prev) =>
+        Math.min(prev + 50, sortedCapacitaciones.length)
+      );
+    }
+  }, [displayCount, sortedCapacitaciones.length]);
+
+  // Reset display count when search or filters change
+  useEffect(() => {
+    setDisplayCount(50);
+  }, [searchTerm, filters, sortOption]);
+
+  // Setup intersection observer for infinite scroll
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading) {
+          loadMoreCapacitaciones();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loadMoreCapacitaciones, loading]);
+
+  const fetchAllCapacitaciones = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/capacitaciones?courseId=${course.Id}&page=${currentPage}&limit=25`
-      );
+      const response = await fetch(`/api/capacitaciones?courseId=${course.Id}`);
 
       if (!response.ok) {
         const errorData = await response
           .json()
           .catch(() => ({ error: "Unknown error" }));
         console.error("API Error:", errorData);
-        throw new Error(errorData.error || "Error al cargar los resultados");
+        throw new Error(errorData.error || "Error al cargar las estadísticas");
       }
 
       const data = await response.json();
-      setCapacitaciones(data.data || []);
-      setTotalPages(data.pagination?.totalPages || 1);
-      setTotalRecords(data.pagination?.totalRecords || 0);
+      setAllCapacitaciones(data.data || []);
     } catch (error) {
-      console.error("Error fetching capacitaciones:", error);
+      console.error("Error fetching all capacitaciones:", error);
       toast.error(
         error instanceof Error
           ? error.message
-          : "Error al cargar los resultados del curso"
+          : "Error al cargar las estadísticas del curso"
       );
     } finally {
       setLoading(false);
@@ -71,6 +276,23 @@ export function CourseResults({ course }: CourseResultsProps) {
     });
   };
 
+  // Custom tooltip for the pie chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-semibold text-foreground">{data.name}</p>
+          <p className="text-sm text-muted-foreground">
+            {data.value} estudiante{data.value !== 1 ? "s" : ""} (
+            {data.percentage}%)
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -82,7 +304,7 @@ export function CourseResults({ course }: CourseResultsProps) {
     );
   }
 
-  if (capacitaciones.length === 0) {
+  if (allCapacitaciones.length === 0) {
     return (
       <div className="text-center py-12">
         <div className="text-muted-foreground">
@@ -98,21 +320,288 @@ export function CourseResults({ course }: CourseResultsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg sm:text-xl font-semibold text-foreground">
             Resultados del Curso
           </h2>
         </div>
         <Badge variant="secondary">
-          {totalRecords} registro
-          {totalRecords !== 1 ? "s" : ""}
+          {sortedCapacitaciones.length} registros
+          {(searchTerm || activeFiltersCount > 0) &&
+            ` (filtrados de ${allCapacitaciones.length} totales)`}
         </Badge>
       </div>
 
+      {/* Statistics Chart */}
+      <div className="bg-card border border-border rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          Estadísticas del Curso
+        </h3>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="flex flex-col items-center space-y-4">
+              <Spinner size="lg" />
+              <p className="text-muted-foreground">Cargando estadísticas...</p>
+            </div>
+          </div>
+        ) : allCapacitaciones.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Pie Chart */}
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ percentage }) => `${percentage}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    isAnimationActive={false}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Statistics Cards */}
+            <div className="space-y-4">
+              {chartData.map((item, index) => {
+                const IconComponent = item.icon;
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg"
+                  >
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${item.color}20` }}
+                    >
+                      <IconComponent
+                        className="w-6 h-6"
+                        style={{ color: item.color }}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-foreground">
+                        {item.name}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {item.value} estudiante{item.value !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: item.color }}
+                      >
+                        {item.percentage}%
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Total */}
+              <div className="flex items-center gap-4 p-4 bg-primary/10 rounded-lg border">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-foreground">Total</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Estudiantes registrados
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">
+                    {allCapacitaciones.length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-20 text-muted-foreground">
+            No hay datos disponibles para mostrar estadísticas.
+          </div>
+        )}
+      </div>
+
+      {/* Search, Sort, and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Input
+            placeholder="Buscar por ID, cédula o nombre..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Sort Dropdown */}
+        <Select
+          value={sortOption}
+          onValueChange={(value) => setSortOption(value as SortOption)}
+        >
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <ArrowUpDown className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Ordenar" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="id-desc">ID (Mayor a Menor)</SelectItem>
+            <SelectItem value="id-asc">ID (Menor a Mayor)</SelectItem>
+            <SelectItem value="nombre-asc">Nombre (A-Z)</SelectItem>
+            <SelectItem value="nombre-desc">Nombre (Z-A)</SelectItem>
+            <SelectItem value="nota-desc">Nota (Mayor a Menor)</SelectItem>
+            <SelectItem value="nota-asc">Nota (Menor a Mayor)</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Filters Button */}
+        <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="relative">
+              <Filter className="w-4 h-4 mr-2" />
+              Filtros
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Filtrar Resultados</DialogTitle>
+              <DialogDescription>
+                Selecciona los criterios para filtrar los resultados
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {/* Realizado Filter */}
+              <div className="grid gap-2">
+                <Label htmlFor="realizado">Realizado</Label>
+                <Select
+                  value={filters.realizado === "" ? "all" : filters.realizado}
+                  onValueChange={(value) =>
+                    setFilters({
+                      ...filters,
+                      realizado: value === "all" ? "" : value,
+                    })
+                  }
+                >
+                  <SelectTrigger id="realizado">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="true">Sí</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Graduado Filter */}
+              <div className="grid gap-2">
+                <Label htmlFor="graduado">Graduado</Label>
+                <Select
+                  value={filters.graduado === "" ? "all" : filters.graduado}
+                  onValueChange={(value) =>
+                    setFilters({
+                      ...filters,
+                      graduado: value === "all" ? "" : value,
+                    })
+                  }
+                >
+                  <SelectTrigger id="graduado">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="true">Sí</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Impreso Filter */}
+              <div className="grid gap-2">
+                <Label htmlFor="impreso">Impreso</Label>
+                <Select
+                  value={filters.impreso === "" ? "all" : filters.impreso}
+                  onValueChange={(value) =>
+                    setFilters({
+                      ...filters,
+                      impreso: value === "all" ? "" : value,
+                    })
+                  }
+                >
+                  <SelectTrigger id="impreso">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="true">Sí</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearFilters}
+              >
+                <XIcon className="w-4 h-4 mr-2" />
+                Limpiar Filtros
+              </Button>
+              <Button type="button" onClick={() => setIsFilterOpen(false)}>
+                Aplicar Filtros
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Active Filters Display */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(filters).map(
+            ([key, value]) =>
+              value && (
+                <div
+                  key={key}
+                  className="inline-flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm"
+                >
+                  <span className="font-medium capitalize">{key}:</span>
+                  <span>{value === "true" ? "Sí" : "No"}</span>
+                  <button
+                    onClick={() => setFilters({ ...filters, [key]: "" })}
+                    className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                  >
+                    <XIcon className="w-3 h-3" />
+                  </button>
+                </div>
+              )
+          )}
+        </div>
+      )}
+
       {/* Mobile Cards View */}
       <div className="block lg:hidden space-y-4">
-        {capacitaciones.map((cap) => (
+        {displayedCapacitaciones.map((cap) => (
           <div
             key={cap.Id}
             className="border border-border rounded-lg p-4 space-y-3 bg-card"
@@ -173,6 +662,23 @@ export function CourseResults({ course }: CourseResultsProps) {
             </div>
           </div>
         ))}
+
+        {/* Infinite Scroll Trigger for Mobile */}
+        {hasMore && (
+          <div ref={loadMoreRef} className="flex lg:hidden justify-center py-8">
+            <Spinner size="md" />
+            <span className="ml-2 text-sm text-muted-foreground">
+              Cargando más resultados...
+            </span>
+          </div>
+        )}
+
+        {/* End of results indicator for Mobile */}
+        {!hasMore && displayedCapacitaciones.length > 50 && (
+          <div className="lg:hidden text-center py-8 text-sm text-muted-foreground">
+            Has llegado al final de los resultados
+          </div>
+        )}
       </div>
 
       {/* Desktop Table View */}
@@ -196,7 +702,7 @@ export function CourseResults({ course }: CourseResultsProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {capacitaciones.map((cap) => (
+            {displayedCapacitaciones.map((cap) => (
               <tr key={cap.Id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3">{cap.Id}</td>
                 <td className="px-4 py-3">{cap.Cedula}</td>
@@ -247,133 +753,20 @@ export function CourseResults({ course }: CourseResultsProps) {
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-4 mt-8">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1 || loading}
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Anterior
-          </Button>
+      {/* Infinite Scroll Trigger for Desktop - SHARED REF */}
+      {hasMore && (
+        <div ref={loadMoreRef} className="hidden lg:flex justify-center py-8">
+          <Spinner size="md" />
+          <span className="ml-2 text-sm text-muted-foreground">
+            Cargando más resultados...
+          </span>
+        </div>
+      )}
 
-          <div className="flex items-center space-x-2">
-            {(() => {
-              const pages = [];
-
-              // Show first page if not current and not adjacent
-              if (currentPage > 2) {
-                pages.push(
-                  <Button
-                    key={1}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={loading}
-                  >
-                    1
-                  </Button>
-                );
-
-                // Show ellipsis if there's a gap
-                if (currentPage > 3) {
-                  pages.push(
-                    <span
-                      key="ellipsis-start"
-                      className="px-2 text-muted-foreground"
-                    >
-                      ...
-                    </span>
-                  );
-                }
-              }
-
-              // Show previous page
-              if (currentPage > 1) {
-                pages.push(
-                  <Button
-                    key={currentPage - 1}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={loading}
-                  >
-                    {currentPage - 1}
-                  </Button>
-                );
-              }
-
-              // Show current page
-              pages.push(
-                <Button
-                  key={currentPage}
-                  variant="default"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage)}
-                  disabled={loading}
-                >
-                  {currentPage}
-                </Button>
-              );
-
-              // Show next page
-              if (currentPage < totalPages) {
-                pages.push(
-                  <Button
-                    key={currentPage + 1}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={loading}
-                  >
-                    {currentPage + 1}
-                  </Button>
-                );
-              }
-
-              // Show last page if not current and not adjacent
-              if (currentPage < totalPages - 1) {
-                // Show ellipsis if there's a gap
-                if (currentPage < totalPages - 2) {
-                  pages.push(
-                    <span
-                      key="ellipsis-end"
-                      className="px-2 text-muted-foreground"
-                    >
-                      ...
-                    </span>
-                  );
-                }
-
-                pages.push(
-                  <Button
-                    key={totalPages}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={loading}
-                  >
-                    {totalPages}
-                  </Button>
-                );
-              }
-
-              return pages;
-            })()}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages || loading}
-          >
-            Siguiente
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+      {/* End of results indicator for Desktop */}
+      {!hasMore && displayedCapacitaciones.length > 50 && (
+        <div className="hidden lg:block text-center py-8 text-sm text-muted-foreground">
+          Has llegado al final de los resultados
         </div>
       )}
     </div>

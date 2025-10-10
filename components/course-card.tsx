@@ -24,8 +24,12 @@ import {
   Clock,
   Monitor,
   Building2,
-  MoreVertical,
   MessageCircleQuestion,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -35,37 +39,29 @@ interface CourseCardProps {
   course: Course;
 }
 
-// Static data for now - will be replaced with actual data later
-const getCourseStaticData = (courseId: number) => ({
-  totalPreguntas: 15,
-  entidad: "Instituto Nacional de Capacitación",
-  horas: 40,
-  modalidad: "Virtual",
-  programacion: "07/22", // MM/YY format
-  antiguedad: "2 años",
-  clasificacion: "Capacitación Técnica - Desarrollo Profesional",
-  ciudad: "Bogotá",
-});
-
 export function CourseCard({ course }: CourseCardProps) {
   const router = useRouter();
-  const staticData = getCourseStaticData(course.Id);
 
   // Modal states
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Form states for edit modal
   const [editForm, setEditForm] = useState({
-    nombre: course.Nombre,
-    entidad: staticData.entidad,
-    horas: staticData.horas.toString(),
-    modalidad: staticData.modalidad,
-    programacion: staticData.programacion,
-    antiguedad: staticData.antiguedad,
-    clasificacion: staticData.clasificacion,
-    ciudad: staticData.ciudad,
+    nombre: course.Nombre || course.Curso,
+    entidad: course.Entidad || "",
+    horas: (course.Horas || 0).toString(),
+    modalidad: course.Modalidad || "",
+    programacion: `${course["Mes Programacion"] || ""}/${
+      course["Ano Programacion"] || ""
+    }`,
+    antiguedad: course.Antiguedad || "",
+    clasificacion: course.Clasificacion || "",
+    ciudad: course.Ciudad || "",
   });
+
+  console.log("Rendering CourseCard for course:", course);
 
   const handleCardClick = () => {
     router.push(`/capacitaciones/${course.Id}`);
@@ -103,11 +99,29 @@ export function CourseCard({ course }: CourseCardProps) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <CardTitle className="font-playfair text-lg text-primary line-clamp-1 mb-1">
-                {course.Nombre}
+                {course.Nombre || course.Curso}
               </CardTitle>
-              <Badge variant="secondary" className="text-sm">
-                ID: {course.Id}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-base">
+                  ID: {course.Id}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) =>
+                    handleButtonClick(e, () => {
+                      setIsExpanded(!isExpanded);
+                    })
+                  }
+                  className="h-6 w-6 p-0 hover:bg-primary/10"
+                >
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-primary" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-primary" />
+                  )}
+                </Button>
+              </div>
             </div>
             {/* Action Menu */}
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -151,73 +165,170 @@ export function CourseCard({ course }: CourseCardProps) {
           </div>
         </CardHeader>
 
-        <CardContent className="py-0">
-          {/* Course Information - Ultra Compact */}
-          <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-sm">
-            {/* Row 1: Total Preguntas y Entidad */}
-            <div className="flex items-center gap-1">
-              <MessageCircleQuestion className="w-3 h-3 text-primary shrink-0" />
-              <span className="text-muted-foreground">Preguntas:</span>
-              <span className="text-foreground font-medium">
-                {course.preguntas?.length || staticData.totalPreguntas}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-primary shrink-0" />
-              <span className="text-foreground font-medium truncate">
-                {staticData.entidad}
-              </span>
-            </div>
+        {isExpanded && (
+          <CardContent className="py-3">
+            {/* Course Information - Compact Responsive Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2.5">
+              {/* Total Preguntas */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <MessageCircleQuestion className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">
+                    Total Preguntas
+                  </p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course["Total Preguntas"] || course.preguntas?.length || 0}
+                </p>
+              </div>
 
-            {/* Row 2: Horas y Modalidad */}
-            <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3 text-primary shrink-0" />
-              <span className="text-muted-foreground">Horas:</span>
-              <span className="text-foreground font-medium">
-                {staticData.horas}h
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Monitor className="w-3 h-3 text-primary shrink-0" />
-              <span className="text-muted-foreground">Modalidad:</span>
-              <span className="text-foreground font-medium">
-                {staticData.modalidad}
-              </span>
-            </div>
+              {/* Entidad */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Entidad</p>
+                </div>
+                <p className="text-base font-semibold text-foreground truncate">
+                  {course.Entidad || "N/A"}
+                </p>
+              </div>
 
-            {/* Row 3: Programación y Antigüedad */}
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-primary shrink-0" />
-              <span className="text-muted-foreground">Prog:</span>
-              <span className="text-foreground font-medium">
-                {staticData.programacion}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <GraduationCap className="w-3 h-3 text-primary shrink-0" />
-              <span className="text-muted-foreground">Antigüedad:</span>
-              <span className="text-foreground font-medium">
-                {staticData.antiguedad}
-              </span>
-            </div>
+              {/* Horas */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Clock className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Horas</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course.Horas || 0}h
+                </p>
+              </div>
 
-            {/* Row 4: Ciudad */}
-            <div className="flex items-center gap-1 col-span-2">
-              <Building2 className="w-3 h-3 text-primary shrink-0" />
-              <span className="text-muted-foreground">Ciudad:</span>
-              <span className="text-foreground font-medium">
-                {staticData.ciudad}
-              </span>
-            </div>
-          </div>
+              {/* Modalidad */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Monitor className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Modalidad</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course.Modalidad || "N/A"}
+                </p>
+              </div>
 
-          {/* Classification - Single Line */}
-          <div className="mt-2 pt-2 border-t border-muted/50 text-sm">
-            <div className="text-muted-foreground truncate">
-              <strong>Clasificación:</strong> {staticData.clasificacion}
+              {/* Programación */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Programación</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course["Mes Programacion"] && course["Ano Programacion"]
+                    ? `${course["Mes Programacion"]}/${course["Ano Programacion"]}`
+                    : "N/A"}
+                </p>
+              </div>
+
+              {/* Antigüedad */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <GraduationCap className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Antigüedad</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course.Antiguedad || "N/A"}
+                </p>
+              </div>
+
+              {/* Ciudad */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Ciudad</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course.Ciudad || "N/A"}
+                </p>
+              </div>
+
+              {/* Proyecto */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Proyecto</p>
+                </div>
+                <p className="text-base font-semibold text-foreground truncate">
+                  {course.Proyecto || "N/A"}
+                </p>
+              </div>
+
+              {/* Estado */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <CheckCircle className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Estado</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course.Estado || "N/A"}
+                </p>
+              </div>
+
+              {/* Lugar */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Lugar</p>
+                </div>
+                <p className="text-base font-semibold text-foreground truncate">
+                  {course.Lugar || "N/A"}
+                </p>
+              </div>
+
+              {/* CC (Centro de Costo) */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">C. Costo</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course.CC || "N/A"}
+                </p>
+              </div>
+
+              {/* Cargo */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <GraduationCap className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Cargo</p>
+                </div>
+                <p className="text-base font-semibold text-foreground truncate">
+                  {course.Cargo || "N/A"}
+                </p>
+              </div>
+
+              {/* Aplica Eficiencia */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <AlertCircle className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Eficiencia</p>
+                </div>
+                <p className="text-base font-semibold text-foreground">
+                  {course.AplicaEficiencia ? "Sí" : "No"}
+                </p>
+              </div>
+
+              {/* Classification */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-muted-foreground">Clasificación</p>
+                </div>
+                <p className="text-base font-semibold text-foreground truncate">
+                  {course.Clasificacion || "N/A"}
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
 
       {/* Edit Modal */}

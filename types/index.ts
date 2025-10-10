@@ -13,13 +13,32 @@ export interface Question {
 
 export interface Course {
   Id: number;
-  Nombre: string;
-  Texto: string;
-  InduccionVideo: string;
-  InduccionVideo2: string;
-  InduccionVideo3: string;
-  InduccionVideo4: string;
-  preguntas: Question[];
+  Curso: string;
+  "Existe Plataforma Interna": number;
+  "Total Preguntas": number;
+  Entidad: string;
+  Horas: number;
+  Modalidad: string;
+  "Ano Programacion": string;
+  "Mes Programacion": string;
+  Antiguedad: string;
+  Clasificacion: string;
+  Ciudad: string;
+  Proyecto: string;
+  Estado: string;
+  Lugar: string;
+  CC: string;
+  Cargo: string;
+  IdEmpleado: number;
+  AplicaEficiencia: boolean;
+  // Legacy fields for backward compatibility
+  Nombre?: string;
+  Texto?: string;
+  InduccionVideo?: string;
+  InduccionVideo2?: string;
+  InduccionVideo3?: string;
+  InduccionVideo4?: string;
+  preguntas?: Question[];
 }
 
 export interface Capacitacion {

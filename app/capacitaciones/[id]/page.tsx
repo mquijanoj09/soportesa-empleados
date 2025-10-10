@@ -99,7 +99,7 @@ export default function CourseDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="container mx-auto px-6 py-12">
         {/* Back Button */}
         <div className="mb-6">
           <Button
@@ -115,7 +115,7 @@ export default function CourseDetailsPage() {
         {/* Course Header */}
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-2">
-            {course.Nombre}
+            {course.Nombre || course.Curso}
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base">
             Detalles del curso y recursos de aprendizaje

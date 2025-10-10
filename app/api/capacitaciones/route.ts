@@ -39,8 +39,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
 
     if (!courseId) {
       return NextResponse.json(
@@ -52,9 +50,6 @@ export async function GET(request: NextRequest) {
     const connection = await getConnection();
 
     try {
-      // Calculate offset for pagination
-      const offset = (page - 1) * limit;
-
       // Get total count for pagination info
       const [countResult] = await connection.execute(
         `SELECT COUNT(*) as total 
@@ -106,9 +101,8 @@ export async function GET(request: NextRequest) {
         FROM \`23_Capacitacion\` c
         LEFT JOIN \`03_InformacionPersonal\` p ON c.IdEmpleado = p.Id
         WHERE c.\`IdCurso\` = ? 
-        ORDER BY c.Id DESC
-        LIMIT ? OFFSET ?`,
-        [courseId, limit, offset]
+        ORDER BY c.Id DESC`,
+        [courseId]
       );
 
       const capacitaciones = (rows as any[]).map((row) => ({
@@ -130,17 +124,8 @@ export async function GET(request: NextRequest) {
         Cedula: row.Cedula || "N/A",
       }));
 
-      const totalPages = Math.ceil(totalRecords / limit);
-
       return NextResponse.json({
         data: capacitaciones,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalRecords,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
-        },
       });
     } finally {
       await connection.end();

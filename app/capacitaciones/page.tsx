@@ -12,7 +12,7 @@ export default function HomePage() {
   const { state, actions } = useCourse();
 
   useEffect(() => {
-    actions.fetchCourses();
+    actions.fetchAllCourses();
   }, []);
 
   return (
