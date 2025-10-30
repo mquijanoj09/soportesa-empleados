@@ -73,4 +73,5 @@ export interface Capacitacion {
   "Segundo Apellido": string;
   NombreCompleto: string;
   Cedula: string;
+  "Lugar actual": string;
 }

@@ -42,6 +42,8 @@ import {
   Filter,
   ArrowUpDown,
   X as XIcon,
+  Send,
+  Download,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
@@ -80,6 +82,24 @@ export function CourseResults({ course }: CourseResultsProps) {
     impreso: "",
   });
 
+  // Email modal states
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailOption, setEmailOption] = useState<
+    "no-graduados" | "specific" | null
+  >(null);
+  const [selectedEmails, setSelectedEmails] = useState<Set<number>>(new Set());
+  const [isSelectingEmails, setIsSelectingEmails] = useState(false);
+
+  // Certificate modal states
+  const [isCertificateModalOpen, setIsCertificateModalOpen] = useState(false);
+  const [certificateOption, setCertificateOption] = useState<
+    "todos-no-impresos" | "todos-graduados" | "specific" | null
+  >(null);
+  const [selectedCertificates, setSelectedCertificates] = useState<Set<number>>(
+    new Set()
+  );
+  const [isSelectingCertificates, setIsSelectingCertificates] = useState(false);
+
   // Filter capacitaciones based on search term and filters
   const filteredCapacitaciones = useMemo(() => {
     let result = allCapacitaciones;
@@ -91,11 +111,13 @@ export function CourseResults({ course }: CourseResultsProps) {
         const id = cap.Id?.toString() || "";
         const cedula = cap.Cedula?.toLowerCase() || "";
         const nombre = cap.NombreCompleto?.toLowerCase() || "";
+        const lugarActual = cap["Lugar actual"]?.toLowerCase() || "";
 
         return (
           id.includes(search) ||
           cedula.includes(search) ||
-          nombre.includes(search)
+          nombre.includes(search) ||
+          lugarActual.includes(search)
         );
       });
     }
@@ -146,6 +168,21 @@ export function CourseResults({ course }: CourseResultsProps) {
 
   const hasMore = displayCount < sortedCapacitaciones.length;
 
+  // Get non-graduated students for email modal
+  const nonGraduatedStudents = useMemo(() => {
+    return allCapacitaciones.filter((cap) => !cap.Graduado);
+  }, [allCapacitaciones]);
+
+  // Get graduated students for certificate modal
+  const graduatedStudents = useMemo(() => {
+    return allCapacitaciones.filter((cap) => cap.Graduado);
+  }, [allCapacitaciones]);
+
+  // Get graduated students with non-printed certificates
+  const nonPrintedStudents = useMemo(() => {
+    return allCapacitaciones.filter((cap) => cap.Graduado && !cap.Impreso);
+  }, [allCapacitaciones]);
+
   const activeFiltersCount = Object.values(filters).filter(
     (value) => value !== ""
   ).length;
@@ -156,6 +193,177 @@ export function CourseResults({ course }: CourseResultsProps) {
       graduado: "",
       impreso: "",
     });
+  };
+
+  // Email handling functions
+  const handleEmailOptionChange = (option: "no-graduados" | "specific") => {
+    setEmailOption(option);
+    setSelectedEmails(new Set());
+    setIsSelectingEmails(option === "specific");
+  };
+
+  const toggleEmailSelection = (capacitacionId: number) => {
+    const newSelection = new Set(selectedEmails);
+    if (newSelection.has(capacitacionId)) {
+      newSelection.delete(capacitacionId);
+    } else {
+      newSelection.add(capacitacionId);
+    }
+    setSelectedEmails(newSelection);
+  };
+
+  const selectAllNonGraduated = () => {
+    const nonGraduated = allCapacitaciones
+      .filter((cap) => !cap.Graduado)
+      .map((cap) => cap.Id);
+    setSelectedEmails(new Set(nonGraduated));
+  };
+
+  const clearEmailSelection = () => {
+    setSelectedEmails(new Set());
+  };
+
+  const handleSendEmails = () => {
+    let emailsToSend: string[] = [];
+
+    if (emailOption === "no-graduados") {
+      // Send to all non-graduated students
+      const nonGraduatedEmails = allCapacitaciones
+        .filter((cap) => !cap.Graduado)
+        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
+        .filter(Boolean);
+      emailsToSend = nonGraduatedEmails;
+
+      console.log("Enviando correo a todos los NO GRADUADOS:");
+      console.log("Total de destinatarios:", nonGraduatedEmails.length);
+      console.log("Destinatarios:", nonGraduatedEmails);
+    } else if (emailOption === "specific") {
+      // Send to specific selected students
+      const specificEmails = allCapacitaciones
+        .filter((cap) => selectedEmails.has(cap.Id))
+        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
+        .filter(Boolean);
+      emailsToSend = specificEmails;
+
+      console.log("Enviando correo a empleados específicos:");
+      console.log("Total de destinatarios:", specificEmails.length);
+      console.log("Destinatarios:", specificEmails);
+    }
+
+    if (emailsToSend.length > 0) {
+      toast.success(
+        `Correos enviados exitosamente a ${emailsToSend.length} destinatario${
+          emailsToSend.length !== 1 ? "s" : ""
+        }`
+      );
+    } else {
+      toast.error("No se seleccionaron destinatarios para enviar el correo");
+    }
+
+    // Reset modal state
+    setIsEmailModalOpen(false);
+    setEmailOption(null);
+    setSelectedEmails(new Set());
+    setIsSelectingEmails(false);
+  };
+
+  const resetEmailModal = () => {
+    setEmailOption(null);
+    setSelectedEmails(new Set());
+    setIsSelectingEmails(false);
+  };
+
+  // Certificate handling functions
+  const handleCertificateOptionChange = (
+    option: "todos-no-impresos" | "todos-graduados" | "specific"
+  ) => {
+    setCertificateOption(option);
+    setSelectedCertificates(new Set());
+    setIsSelectingCertificates(option === "specific");
+  };
+
+  const toggleCertificateSelection = (capacitacionId: number) => {
+    const newSelection = new Set(selectedCertificates);
+    if (newSelection.has(capacitacionId)) {
+      newSelection.delete(capacitacionId);
+    } else {
+      newSelection.add(capacitacionId);
+    }
+    setSelectedCertificates(newSelection);
+  };
+
+  const selectAllGraduated = () => {
+    const graduated = allCapacitaciones
+      .filter((cap) => cap.Graduado)
+      .map((cap) => cap.Id);
+    setSelectedCertificates(new Set(graduated));
+  };
+
+  const clearCertificateSelection = () => {
+    setSelectedCertificates(new Set());
+  };
+
+  const handleDownloadCertificates = () => {
+    let certificatesToDownload: string[] = [];
+
+    if (certificateOption === "todos-no-impresos") {
+      // Download for all graduated students with non-printed certificates
+      const nonPrintedCertificates = allCapacitaciones
+        .filter((cap) => cap.Graduado && !cap.Impreso)
+        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
+        .filter(Boolean);
+      certificatesToDownload = nonPrintedCertificates;
+
+      console.log("Descargando certificados de todos los NO IMPRESOS:");
+      console.log("Total de certificados:", nonPrintedCertificates.length);
+      console.log("No impresos:", nonPrintedCertificates);
+    } else if (certificateOption === "todos-graduados") {
+      // Download for all graduated students
+      const graduatedCertificates = allCapacitaciones
+        .filter((cap) => cap.Graduado)
+        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
+        .filter(Boolean);
+      certificatesToDownload = graduatedCertificates;
+
+      console.log("Descargando certificados de todos los GRADUADOS:");
+      console.log("Total de certificados:", graduatedCertificates.length);
+      console.log("Graduados:", graduatedCertificates);
+    } else if (certificateOption === "specific") {
+      // Download for specific selected students
+      const specificCertificates = allCapacitaciones
+        .filter((cap) => selectedCertificates.has(cap.Id) && cap.Graduado)
+        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
+        .filter(Boolean);
+      certificatesToDownload = specificCertificates;
+
+      console.log("Descargando certificados de empleados específicos:");
+      console.log("Total de certificados:", specificCertificates.length);
+      console.log("Empleados:", specificCertificates);
+    }
+
+    if (certificatesToDownload.length > 0) {
+      toast.success(
+        `Certificados descargados exitosamente para ${
+          certificatesToDownload.length
+        } empleado${certificatesToDownload.length !== 1 ? "s" : ""}`
+      );
+    } else {
+      toast.error(
+        "No se seleccionaron empleados graduados para descargar certificados"
+      );
+    }
+
+    // Reset modal state
+    setIsCertificateModalOpen(false);
+    setCertificateOption(null);
+    setSelectedCertificates(new Set());
+    setIsSelectingCertificates(false);
+  };
+
+  const resetCertificateModal = () => {
+    setCertificateOption(null);
+    setSelectedCertificates(new Set());
+    setIsSelectingCertificates(false);
   };
 
   // Calculate chart data from ALL capacitaciones
@@ -419,7 +627,7 @@ export function CourseResults({ course }: CourseResultsProps) {
                 <div className="flex-1">
                   <h4 className="font-semibold text-foreground">Total</h4>
                   <p className="text-sm text-muted-foreground">
-                    Estudiantes registrados
+                    Empleados registrados
                   </p>
                 </div>
                 <div className="text-right">
@@ -437,12 +645,472 @@ export function CourseResults({ course }: CourseResultsProps) {
         )}
       </div>
 
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Email Modal */}
+        <Dialog
+          open={isEmailModalOpen}
+          onOpenChange={(open) => {
+            setIsEmailModalOpen(open);
+            if (!open) {
+              resetEmailModal();
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Send className="w-4 h-4" />
+              Enviar Correo
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:min-w-fit w-full max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Enviar Correos Electrónicos</DialogTitle>
+              <DialogDescription>
+                Selecciona a quién deseas enviar los correos electrónicos
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Email Options */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">
+                  Opciones de envío:
+                </Label>
+
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <input
+                      type="radio"
+                      id="no-graduados"
+                      name="email-option"
+                      value="no-graduados"
+                      checked={emailOption === "no-graduados"}
+                      onChange={() => handleEmailOptionChange("no-graduados")}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="no-graduados"
+                        className="font-medium cursor-pointer"
+                      >
+                        Todos los NO graduados
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        Enviar correo a todos los empleados que no se graduaron
+                        ({nonGraduatedStudents.length} empleados)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <input
+                      type="radio"
+                      id="specific"
+                      name="email-option"
+                      value="specific"
+                      checked={emailOption === "specific"}
+                      onChange={() => handleEmailOptionChange("specific")}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="specific"
+                        className="font-medium cursor-pointer"
+                      >
+                        Seleccionar empleados específicos
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        Elige manualmente qué empleados recibirán el correo
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Specific Student Selection */}
+              {isSelectingEmails && (
+                <div className="space-y-4 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">
+                      Seleccionar empleados ({selectedEmails.size}{" "}
+                      seleccionados)
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={clearEmailSelection}
+                    >
+                      Limpiar selección
+                    </Button>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    {allCapacitaciones.length > 0 ? (
+                      <div className="space-y-1 p-2">
+                        {allCapacitaciones.map((cap) => (
+                          <div
+                            key={cap.Id}
+                            className={`flex items-center space-x-3 p-2 rounded hover:bg-muted cursor-pointer ${
+                              selectedEmails.has(cap.Id) ? "bg-primary/10" : ""
+                            }`}
+                            onClick={() => toggleEmailSelection(cap.Id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedEmails.has(cap.Id)}
+                              onChange={() => toggleEmailSelection(cap.Id)}
+                              className="cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">
+                                  {cap.NombreCompleto}
+                                </p>
+                                {cap.Graduado ? (
+                                  <Badge
+                                    variant="default"
+                                    className="bg-green-500 text-xs"
+                                  >
+                                    Graduado
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    No graduado
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                ID: {cap.Id} | Cédula: {cap.Cedula} | Nota:{" "}
+                                {cap.Nota || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-muted-foreground">
+                        No hay empleados disponibles
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              {emailOption && (
+                <div className="bg-muted/50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">Resumen:</h4>
+                  {emailOption === "no-graduados" ? (
+                    <p className="text-sm">
+                      Se enviará el correo a{" "}
+                      <strong>{nonGraduatedStudents.length}</strong> estudiante
+                      {nonGraduatedStudents.length !== 1 ? "s" : ""} que no se
+                      graduaron.
+                    </p>
+                  ) : (
+                    <p className="text-sm">
+                      Se enviará el correo a{" "}
+                      <strong>{selectedEmails.size}</strong> estudiante
+                      {selectedEmails.size !== 1 ? "s" : ""} seleccionados.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEmailModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSendEmails}
+                disabled={
+                  !emailOption ||
+                  (emailOption === "specific" && selectedEmails.size === 0)
+                }
+                className="flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Enviar Correos
+                {emailOption === "no-graduados" &&
+                  ` (${nonGraduatedStudents.length})`}
+                {emailOption === "specific" && ` (${selectedEmails.size})`}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Certificate Modal */}
+        <Dialog
+          open={isCertificateModalOpen}
+          onOpenChange={(open) => {
+            setIsCertificateModalOpen(open);
+            if (!open) {
+              resetCertificateModal();
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2" variant="outline">
+              <Download className="w-4 h-4" />
+              Descargar Certificados
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:min-w-fit w-full max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Descargar Certificados</DialogTitle>
+              <DialogDescription>
+                Selecciona qué certificados deseas descargar
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Certificate Options */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">
+                  Opciones de descarga:
+                </Label>
+
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <input
+                      type="radio"
+                      id="todos-no-impresos"
+                      name="certificate-option"
+                      value="todos-no-impresos"
+                      checked={certificateOption === "todos-no-impresos"}
+                      onChange={() =>
+                        handleCertificateOptionChange("todos-no-impresos")
+                      }
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="todos-no-impresos"
+                        className="font-medium cursor-pointer"
+                      >
+                        Todos los no impresos
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        Descargar certificados de empleados graduados que no han
+                        sido impresos ({nonPrintedStudents.length} empleados)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <input
+                      type="radio"
+                      id="todos-graduados"
+                      name="certificate-option"
+                      value="todos-graduados"
+                      checked={certificateOption === "todos-graduados"}
+                      onChange={() =>
+                        handleCertificateOptionChange("todos-graduados")
+                      }
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="todos-graduados"
+                        className="font-medium cursor-pointer"
+                      >
+                        Todos los graduados
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        Descargar certificados de todos los empleados graduados
+                        ({graduatedStudents.length} empleados)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <input
+                      type="radio"
+                      id="specific-certificates"
+                      name="certificate-option"
+                      value="specific"
+                      checked={certificateOption === "specific"}
+                      onChange={() => handleCertificateOptionChange("specific")}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="specific-certificates"
+                        className="font-medium cursor-pointer"
+                      >
+                        Seleccionar empleados específicos
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        Elige manualmente qué empleados graduados tendrán sus
+                        certificados descargados
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Specific Student Selection */}
+              {isSelectingCertificates && (
+                <div className="space-y-4 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">
+                      Seleccionar empleados graduados (
+                      {selectedCertificates.size} seleccionados)
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={clearCertificateSelection}
+                    >
+                      Limpiar selección
+                    </Button>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    {graduatedStudents.length > 0 ? (
+                      <div className="space-y-1 p-2">
+                        {graduatedStudents.map((cap) => (
+                          <div
+                            key={cap.Id}
+                            className={`flex items-center space-x-3 p-2 rounded hover:bg-muted cursor-pointer ${
+                              selectedCertificates.has(cap.Id)
+                                ? "bg-primary/10"
+                                : ""
+                            }`}
+                            onClick={() => toggleCertificateSelection(cap.Id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCertificates.has(cap.Id)}
+                              onChange={() =>
+                                toggleCertificateSelection(cap.Id)
+                              }
+                              className="cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">
+                                  {cap.NombreCompleto}
+                                </p>
+                                <Badge
+                                  variant="default"
+                                  className="bg-green-500 text-xs"
+                                >
+                                  Graduado
+                                </Badge>
+                                {cap.Impreso ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs border-blue-500 text-blue-600"
+                                  >
+                                    Impreso
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs border-orange-500 text-orange-600"
+                                  >
+                                    No Impreso
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                ID: {cap.Id} | Cédula: {cap.Cedula} | Nota:{" "}
+                                {cap.Nota || "N/A"} | Lugar:{" "}
+                                {cap["Lugar actual"]}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-muted-foreground">
+                        No hay empleados graduados disponibles
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              {certificateOption && (
+                <div className="bg-muted/50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">Resumen:</h4>
+                  {certificateOption === "todos-no-impresos" ? (
+                    <p className="text-sm">
+                      Se descargarán los certificados de{" "}
+                      <strong>{nonPrintedStudents.length}</strong> empleado
+                      {nonPrintedStudents.length !== 1 ? "s" : ""} graduados que
+                      no han sido impresos.
+                    </p>
+                  ) : certificateOption === "todos-graduados" ? (
+                    <p className="text-sm">
+                      Se descargarán los certificados de{" "}
+                      <strong>{graduatedStudents.length}</strong> empleado
+                      {graduatedStudents.length !== 1 ? "s" : ""} graduados.
+                    </p>
+                  ) : (
+                    <p className="text-sm">
+                      Se descargarán los certificados de{" "}
+                      <strong>{selectedCertificates.size}</strong> empleado
+                      {selectedCertificates.size !== 1 ? "s" : ""}{" "}
+                      seleccionados.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCertificateModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleDownloadCertificates}
+                disabled={
+                  !certificateOption ||
+                  (certificateOption === "specific" &&
+                    selectedCertificates.size === 0)
+                }
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Descargar Certificados
+                {certificateOption === "todos-no-impresos" &&
+                  ` (${nonPrintedStudents.length})`}
+                {certificateOption === "todos-graduados" &&
+                  ` (${graduatedStudents.length})`}
+                {certificateOption === "specific" &&
+                  ` (${selectedCertificates.size})`}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
       {/* Search, Sort, and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
-            placeholder="Buscar por ID, cédula o nombre..."
+            placeholder="Buscar por ID, cédula, lugar actual o nombre..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -501,10 +1169,10 @@ export function CourseResults({ course }: CourseResultsProps) {
                     })
                   }
                 >
-                  <SelectTrigger id="realizado">
+                  <SelectTrigger id="realizado" className="w-full">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="w-full">
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="true">Sí</SelectItem>
                     <SelectItem value="false">No</SelectItem>
@@ -524,10 +1192,10 @@ export function CourseResults({ course }: CourseResultsProps) {
                     })
                   }
                 >
-                  <SelectTrigger id="graduado">
+                  <SelectTrigger id="graduado" className="w-full">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="w-full">
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="true">Sí</SelectItem>
                     <SelectItem value="false">No</SelectItem>
@@ -547,10 +1215,10 @@ export function CourseResults({ course }: CourseResultsProps) {
                     })
                   }
                 >
-                  <SelectTrigger id="impreso">
+                  <SelectTrigger id="impreso" className="w-full">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="w-full">
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="true">Sí</SelectItem>
                     <SelectItem value="false">No</SelectItem>
@@ -614,6 +1282,9 @@ export function CourseResults({ course }: CourseResultsProps) {
                 <p className="text-sm text-muted-foreground">ID: {cap.Id}</p>
                 <p className="text-sm text-muted-foreground">
                   Cédula: {cap.Cedula}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Lugar: {cap["Lugar actual"]}
                 </p>
               </div>
               {cap.Graduado && (
@@ -689,6 +1360,9 @@ export function CourseResults({ course }: CourseResultsProps) {
               <th className="px-4 py-3 text-left font-semibold">ID</th>
               <th className="px-4 py-3 text-left font-semibold">Cédula</th>
               <th className="px-4 py-3 text-left font-semibold">Nombre</th>
+              <th className="px-4 py-3 text-left font-semibold">
+                Lugar Actual
+              </th>
               <th className="px-4 py-3 text-center font-semibold">Realizado</th>
               <th className="px-4 py-3 text-center font-semibold">Graduado</th>
               <th className="px-4 py-3 text-center font-semibold">Impreso</th>
@@ -707,6 +1381,7 @@ export function CourseResults({ course }: CourseResultsProps) {
                 <td className="px-4 py-3">{cap.Id}</td>
                 <td className="px-4 py-3">{cap.Cedula}</td>
                 <td className="px-4 py-3 font-medium">{cap.NombreCompleto}</td>
+                <td className="px-4 py-3">{cap["Lugar actual"]}</td>
                 <td className="px-4 py-3 text-center">
                   {cap.Realizado ? (
                     <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" />

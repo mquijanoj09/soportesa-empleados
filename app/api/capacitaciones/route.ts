@@ -33,6 +33,7 @@ export interface Capacitacion {
   "Segundo Apellido": string;
   NombreCompleto: string;
   Cedula: string;
+  "Lugar actual": string;
 }
 
 export async function GET(request: NextRequest) {
@@ -55,6 +56,7 @@ export async function GET(request: NextRequest) {
         `SELECT COUNT(*) as total 
          FROM \`23_Capacitacion\` c
          LEFT JOIN \`03_InformacionPersonal\` p ON c.IdEmpleado = p.Id
+         LEFT JOIN \`09_ContratoActual\` ca ON c.IdEmpleado = ca.IdEmpleado
          WHERE c.\`IdCurso\` = ?`,
         [courseId]
       );
@@ -97,9 +99,11 @@ export async function GET(request: NextRequest) {
             TRIM(p.\`Segundo Nombre\`), 
             TRIM(p.\`Primer Apellido\`), 
             TRIM(p.\`Segundo Apellido\`)
-          ) as NombreCompleto
+          ) as NombreCompleto,
+          ca.\`Lugar actual\`
         FROM \`23_Capacitacion\` c
         LEFT JOIN \`03_InformacionPersonal\` p ON c.IdEmpleado = p.Id
+        LEFT JOIN \`09_ContratoActual\` ca ON c.IdEmpleado = ca.IdEmpleado
         WHERE c.\`IdCurso\` = ? 
         ORDER BY c.Id DESC`,
         [courseId]
@@ -122,6 +126,7 @@ export async function GET(request: NextRequest) {
         "Segundo Apellido": row["Segundo Apellido"] || "",
         NombreCompleto: row.NombreCompleto || "Nombre no disponible",
         Cedula: row.Cedula || "N/A",
+        "Lugar actual": row["Lugar actual"] || "No especificado",
       }));
 
       return NextResponse.json({
