@@ -41,6 +41,8 @@ type ViewState =
 export default function EmpleadosPage() {
   const [currentView, setCurrentView] = useState<ViewState>("login");
   const [cedula, setCedula] = useState("");
+  const [monthExpedition, setMonthExpedition] = useState("");
+  const [dayExpedition, setDayExpedition] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Employee data
@@ -66,11 +68,23 @@ export default function EmpleadosPage() {
       toast.error("Por favor ingrese su cédula");
       return;
     }
+    if (!monthExpedition.trim()) {
+      toast.error("Por favor ingrese el mes de expedición");
+      return;
+    }
+    if (!dayExpedition.trim()) {
+      toast.error("Por favor ingrese el día de expedición");
+      return;
+    }
 
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/empleados?cedula=${encodeURIComponent(cedula)}`
+        `/api/empleados?cedula=${encodeURIComponent(
+          cedula
+        )}&month=${encodeURIComponent(
+          monthExpedition
+        )}&day=${encodeURIComponent(dayExpedition)}`
       );
 
       if (!response.ok) {
@@ -185,6 +199,8 @@ export default function EmpleadosPage() {
     setEmployee(null);
     setCapacitaciones({ pendientes: [], realizadas: [] });
     setCedula("");
+    setMonthExpedition("");
+    setDayExpedition("");
     handleReturnToDashboard();
     toast.info("Sesión cerrada correctamente");
   };
@@ -204,7 +220,10 @@ export default function EmpleadosPage() {
   // Login view
   if (currentView === "login") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div
+        className="bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-y-hidden"
+        style={{ minHeight: "calc(100vh - 80px)" }}
+      >
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <User className="mx-auto h-12 w-12 text-primary" />
@@ -235,10 +254,46 @@ export default function EmpleadosPage() {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="month">Mes de Expedición</Label>
+                    <Input
+                      id="month"
+                      type="number"
+                      placeholder="MM"
+                      min="1"
+                      max="12"
+                      value={monthExpedition}
+                      onChange={(e) => setMonthExpedition(e.target.value)}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="day">Día de Expedición</Label>
+                    <Input
+                      id="day"
+                      type="number"
+                      placeholder="DD"
+                      min="1"
+                      max="31"
+                      value={dayExpedition}
+                      onChange={(e) => setDayExpedition(e.target.value)}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isLoading || !cedula.trim()}
+                  disabled={
+                    isLoading ||
+                    !cedula.trim() ||
+                    !monthExpedition.trim() ||
+                    !dayExpedition.trim()
+                  }
                 >
                   <LogIn className="w-4 h-4 mr-2" />
                   {isLoading ? "Verificando..." : "Ingresar"}
@@ -248,7 +303,10 @@ export default function EmpleadosPage() {
           </Card>
 
           <div className="text-center text-sm text-muted-foreground">
-            <p>Ingrese su número de cédula para acceder a sus capacitaciones</p>
+            <p>
+              Ingrese su cédula y la fecha de expedición (mes y día) para
+              acceder
+            </p>
           </div>
         </div>
       </div>
@@ -262,7 +320,7 @@ export default function EmpleadosPage() {
         <div className="bg-card shadow-sm border-b">
           <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
             <h1 className="text-xl font-semibold">
-              Portal de Empleados - Soportesa
+              Portal de Empleados - Soporte SA
             </h1>
             <Button variant="outline" onClick={handleLogout}>
               Cerrar Sesión
@@ -285,7 +343,7 @@ export default function EmpleadosPage() {
         <div className="bg-card shadow-sm border-b">
           <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
             <h1 className="text-xl font-semibold">
-              Portal de Empleados - Soportesa
+              Portal de Empleados - Soporte SA
             </h1>
             <Button variant="outline" onClick={handleLogout}>
               Cerrar Sesión
@@ -308,7 +366,7 @@ export default function EmpleadosPage() {
         <div className="bg-card shadow-sm border-b">
           <div className="max-w-4xl mx-auto px-6 py-4">
             <h1 className="text-xl font-semibold">
-              Portal de Empleados - Soportesa
+              Portal de Empleados - Soporte SA
             </h1>
           </div>
         </div>
@@ -331,7 +389,7 @@ export default function EmpleadosPage() {
         <div className="bg-card shadow-sm border-b">
           <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
             <h1 className="text-xl font-semibold">
-              Portal de Empleados - Soportesa
+              Portal de Empleados - Soporte SA
             </h1>
             <Button variant="outline" onClick={handleLogout}>
               Cerrar Sesión

@@ -46,6 +46,10 @@ import {
   Download,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  generateCertificate,
+  generateMultipleCertificates,
+} from "@/lib/pdf-generator";
 
 type SortOption =
   | "id-asc"
@@ -99,6 +103,8 @@ export function CourseResults({ course }: CourseResultsProps) {
     new Set()
   );
   const [isSelectingCertificates, setIsSelectingCertificates] = useState(false);
+  const [isGeneratingCertificates, setIsGeneratingCertificates] =
+    useState(false);
 
   // Filter capacitaciones based on search term and filters
   const filteredCapacitaciones = useMemo(() => {
@@ -223,48 +229,101 @@ export function CourseResults({ course }: CourseResultsProps) {
     setSelectedEmails(new Set());
   };
 
-  const handleSendEmails = () => {
-    let emailsToSend: string[] = [];
+  const handleSendEmails = async () => {
+    let selectedCapacitaciones: Capacitacion[] = [];
 
     if (emailOption === "no-graduados") {
       // Send to all non-graduated students
-      const nonGraduatedEmails = allCapacitaciones
-        .filter((cap) => !cap.Graduado)
-        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
-        .filter(Boolean);
-      emailsToSend = nonGraduatedEmails;
-
-      console.log("Enviando correo a todos los NO GRADUADOS:");
-      console.log("Total de destinatarios:", nonGraduatedEmails.length);
-      console.log("Destinatarios:", nonGraduatedEmails);
+      selectedCapacitaciones = allCapacitaciones.filter((cap) => !cap.Graduado);
     } else if (emailOption === "specific") {
       // Send to specific selected students
-      const specificEmails = allCapacitaciones
-        .filter((cap) => selectedEmails.has(cap.Id))
-        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
-        .filter(Boolean);
-      emailsToSend = specificEmails;
-
-      console.log("Enviando correo a empleados específicos:");
-      console.log("Total de destinatarios:", specificEmails.length);
-      console.log("Destinatarios:", specificEmails);
-    }
-
-    if (emailsToSend.length > 0) {
-      toast.success(
-        `Correos enviados exitosamente a ${emailsToSend.length} destinatario${
-          emailsToSend.length !== 1 ? "s" : ""
-        }`
+      selectedCapacitaciones = allCapacitaciones.filter((cap) =>
+        selectedEmails.has(cap.Id)
       );
-    } else {
-      toast.error("No se seleccionaron destinatarios para enviar el correo");
     }
 
-    // Reset modal state
-    setIsEmailModalOpen(false);
-    setEmailOption(null);
-    setSelectedEmails(new Set());
-    setIsSelectingEmails(false);
+    if (selectedCapacitaciones.length === 0) {
+      toast.error("No se seleccionaron destinatarios para enviar el correo");
+      return;
+    }
+
+    // Prepare employee data with email addresses
+    const employees = selectedCapacitaciones.map((cap) => ({
+      capacitacionId: cap.Id,
+      nombre: cap["Primer Nombre"] || cap.NombreCompleto.split(" ")[0],
+      email: cap["Correo Electronico"] || "",
+    }));
+
+    // Show loading toast
+    const loadingToast = toast.loading(
+      `Enviando correos a ${selectedCapacitaciones.length} empleado${
+        selectedCapacitaciones.length !== 1 ? "s" : ""
+      }...`
+    );
+
+    try {
+      const response = await fetch("/api/send-emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          employees,
+          courseId: course.Id,
+          courseName: course.Curso,
+        }),
+      });
+
+      const data = await response.json();
+
+      toast.dismiss(loadingToast);
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al enviar correos");
+      }
+
+      // Show success message with details
+      if (data.emailsSent > 0) {
+        let message = `Correos enviados exitosamente a ${
+          data.emailsSent
+        } empleado${data.emailsSent !== 1 ? "s" : ""}`;
+
+        if (data.emailsFailed > 0) {
+          message += `. ${data.emailsFailed} fallido${
+            data.emailsFailed !== 1 ? "s" : ""
+          }`;
+        }
+
+        if (data.employeesWithoutEmail > 0) {
+          message += `. ${data.employeesWithoutEmail} empleado${
+            data.employeesWithoutEmail !== 1 ? "s" : ""
+          } sin correo electrónico`;
+        }
+
+        toast.success(message);
+      } else {
+        toast.warning(
+          data.error || "No se pudieron enviar correos a ningún empleado"
+        );
+      }
+
+      // Refresh capacitaciones to show updated email stats
+      await fetchAllCapacitaciones();
+
+      // Reset modal state
+      setIsEmailModalOpen(false);
+      setEmailOption(null);
+      setSelectedEmails(new Set());
+      setIsSelectingEmails(false);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      console.error("Error sending emails:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Error al enviar los correos electrónicos"
+      );
+    }
   };
 
   const resetEmailModal = () => {
@@ -303,54 +362,64 @@ export function CourseResults({ course }: CourseResultsProps) {
     setSelectedCertificates(new Set());
   };
 
-  const handleDownloadCertificates = () => {
-    let certificatesToDownload: string[] = [];
+  const handleDownloadCertificates = async () => {
+    let certificatesToDownload: Capacitacion[] = [];
 
     if (certificateOption === "todos-no-impresos") {
       // Download for all graduated students with non-printed certificates
-      const nonPrintedCertificates = allCapacitaciones
-        .filter((cap) => cap.Graduado && !cap.Impreso)
-        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
-        .filter(Boolean);
-      certificatesToDownload = nonPrintedCertificates;
-
-      console.log("Descargando certificados de todos los NO IMPRESOS:");
-      console.log("Total de certificados:", nonPrintedCertificates.length);
-      console.log("No impresos:", nonPrintedCertificates);
+      certificatesToDownload = allCapacitaciones.filter(
+        (cap) => cap.Graduado && !cap.Impreso
+      );
     } else if (certificateOption === "todos-graduados") {
       // Download for all graduated students
-      const graduatedCertificates = allCapacitaciones
-        .filter((cap) => cap.Graduado)
-        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
-        .filter(Boolean);
-      certificatesToDownload = graduatedCertificates;
-
-      console.log("Descargando certificados de todos los GRADUADOS:");
-      console.log("Total de certificados:", graduatedCertificates.length);
-      console.log("Graduados:", graduatedCertificates);
+      certificatesToDownload = allCapacitaciones.filter((cap) => cap.Graduado);
     } else if (certificateOption === "specific") {
       // Download for specific selected students
-      const specificCertificates = allCapacitaciones
-        .filter((cap) => selectedCertificates.has(cap.Id) && cap.Graduado)
-        .map((cap) => `${cap.NombreCompleto} (${cap.Cedula})`)
-        .filter(Boolean);
-      certificatesToDownload = specificCertificates;
-
-      console.log("Descargando certificados de empleados específicos:");
-      console.log("Total de certificados:", specificCertificates.length);
-      console.log("Empleados:", specificCertificates);
+      certificatesToDownload = allCapacitaciones.filter(
+        (cap) => selectedCertificates.has(cap.Id) && cap.Graduado
+      );
     }
 
-    if (certificatesToDownload.length > 0) {
+    if (certificatesToDownload.length === 0) {
+      toast.error(
+        "No se seleccionaron empleados graduados para descargar certificados"
+      );
+      return;
+    }
+
+    setIsGeneratingCertificates(true);
+
+    try {
+      // Generate certificates
+      if (certificatesToDownload.length === 1) {
+        await generateCertificate(certificatesToDownload[0], course);
+      } else {
+        await generateMultipleCertificates(certificatesToDownload, course);
+      }
+
       toast.success(
         `Certificados descargados exitosamente para ${
           certificatesToDownload.length
         } empleado${certificatesToDownload.length !== 1 ? "s" : ""}`
       );
-    } else {
+
+      // Log the action for debugging
+      console.log("Certificados generados para:", {
+        option: certificateOption,
+        count: certificatesToDownload.length,
+        students: certificatesToDownload.map((cap) => ({
+          id: cap.Id,
+          name: cap.NombreCompleto,
+          cedula: cap.Cedula,
+        })),
+      });
+    } catch (error) {
+      console.error("Error generating certificates:", error);
       toast.error(
-        "No se seleccionaron empleados graduados para descargar certificados"
+        "Error al generar los certificados. Por favor, inténtalo de nuevo."
       );
+    } finally {
+      setIsGeneratingCertificates(false);
     }
 
     // Reset modal state
@@ -364,6 +433,7 @@ export function CourseResults({ course }: CourseResultsProps) {
     setCertificateOption(null);
     setSelectedCertificates(new Set());
     setIsSelectingCertificates(false);
+    setIsGeneratingCertificates(false);
   };
 
   // Calculate chart data from ALL capacitaciones
@@ -1085,19 +1155,29 @@ export function CourseResults({ course }: CourseResultsProps) {
                 type="button"
                 onClick={handleDownloadCertificates}
                 disabled={
+                  isGeneratingCertificates ||
                   !certificateOption ||
                   (certificateOption === "specific" &&
                     selectedCertificates.size === 0)
                 }
                 className="flex items-center gap-2"
               >
-                <Download className="w-4 h-4" />
-                Descargar Certificados
-                {certificateOption === "todos-no-impresos" &&
+                {isGeneratingCertificates ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                {isGeneratingCertificates
+                  ? "Generando..."
+                  : "Descargar Certificados"}
+                {!isGeneratingCertificates &&
+                  certificateOption === "todos-no-impresos" &&
                   ` (${nonPrintedStudents.length})`}
-                {certificateOption === "todos-graduados" &&
+                {!isGeneratingCertificates &&
+                  certificateOption === "todos-graduados" &&
                   ` (${graduatedStudents.length})`}
-                {certificateOption === "specific" &&
+                {!isGeneratingCertificates &&
+                  certificateOption === "specific" &&
                   ` (${selectedCertificates.size})`}
               </Button>
             </DialogFooter>

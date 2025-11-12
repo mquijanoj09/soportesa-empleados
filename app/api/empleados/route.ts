@@ -5,10 +5,19 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const cedula = searchParams.get("cedula");
+    const month = searchParams.get("month");
+    const day = searchParams.get("day");
 
     if (!cedula) {
       return NextResponse.json(
         { error: "cedula parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!month || !day) {
+      return NextResponse.json(
+        { error: "month and day parameters are required" },
         { status: 400 }
       );
     }
@@ -25,6 +34,7 @@ export async function GET(request: NextRequest) {
           p.\`Primer Apellido\`,
           p.\`Segundo Apellido\`,
           p.\`Numero Identificacion\` as Cedula,
+          p.\`Fecha De Expedicion\`,
           CONCAT_WS(' ', 
             TRIM(p.\`Primer Nombre\`), 
             TRIM(p.\`Segundo Nombre\`), 
@@ -46,6 +56,63 @@ export async function GET(request: NextRequest) {
       }
 
       const employee = (employeeRows as any[])[0];
+
+      // Log for debugging
+      console.log("Employee found:", {
+        cedula: employee.Cedula,
+        fechaExpedicion: employee["Fecha De Expedicion"],
+      });
+      console.log("Provided date:", { month, day });
+
+      // Validate month and day against "Fecha De Expedicion"
+      const fechaExpedicion = employee["Fecha De Expedicion"];
+
+      // If fechaExpedicion is empty or null, skip validation for now (temporary)
+      if (!fechaExpedicion || fechaExpedicion.trim() === "") {
+        console.log("Warning: No expedition date found, allowing login");
+        // Continue with login (temporary - remove this later)
+      } else {
+        // Parse the date (format is YYYY/MM/DD or YYYY-MM-DD)
+        const dateMatch = fechaExpedicion.match(
+          /(\d{2,4})[\/\-](\d{1,2})[\/\-](\d{1,2})/
+        );
+
+        console.log("Date match result:", dateMatch);
+
+        if (dateMatch) {
+          const [, yearFromDB, monthFromDB, dayFromDB] = dateMatch;
+          const providedMonth = parseInt(month, 10);
+          const providedDay = parseInt(day, 10);
+          const dbMonth = parseInt(monthFromDB, 10);
+          const dbDay = parseInt(dayFromDB, 10);
+
+          console.log("Date comparison:", {
+            providedMonth,
+            providedDay,
+            dbMonth,
+            dbDay,
+          });
+
+          if (providedMonth !== dbMonth || providedDay !== dbDay) {
+            return NextResponse.json(
+              {
+                error:
+                  "La fecha de expedición (mes y día) no coincide con nuestros registros",
+              },
+              { status: 401 }
+            );
+          }
+        } else {
+          console.log("Invalid date format in DB:", fechaExpedicion);
+          return NextResponse.json(
+            {
+              error:
+                "Formato de fecha de expedición inválido en la base de datos",
+            },
+            { status: 500 }
+          );
+        }
+      }
 
       // Get employee's capacitaciones (pending and completed)
       const [capacitacionesRows] = await connection.execute(

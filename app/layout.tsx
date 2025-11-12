@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
-import { Footer } from "@/components/footer";
 import { CourseProvider } from "@/app/context/course-provider";
 import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Soportesa - Sistema de Empleados",
+  title: "Soporte SA - Sistema de Empleados",
   description: "Sistema integral de gestión de empleados",
 };
 
@@ -34,7 +33,7 @@ export default function RootLayout({
               >
                 <Image
                   src="/logotipo.svg"
-                  alt="Soportesa Logo"
+                  alt="Soporte SA Logo"
                   width={200}
                   height={40}
                   priority
