@@ -22,8 +22,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { Search, Filter, ArrowUpDown, X } from "lucide-react";
+import { Search, Filter, ArrowUpDown, X, Plus } from "lucide-react";
 import { useCourse } from "@/app/context/useCourse";
+import { CreateCourseModal } from "./create-course-modal";
 
 type SortOption = "name-asc" | "name-desc" | "id-asc" | "id-desc";
 
@@ -42,6 +43,7 @@ export function CourseList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("id-desc");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(50);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -175,6 +177,11 @@ export function CourseList() {
     }
   }, [displayCount, filteredAndSortedCourses.length]);
 
+  const handleCourseCreated = async () => {
+    // Refetch all courses to update the list
+    await actions.fetchAllCourses();
+  };
+
   // Reset display count when filters or search changes
   useEffect(() => {
     setDisplayCount(50);
@@ -277,7 +284,7 @@ export function CourseList() {
                     })
                   }
                 >
-                  <SelectTrigger id="entidad">
+                  <SelectTrigger id="entidad" className="w-full">
                     <SelectValue placeholder="Todas las entidades" />
                   </SelectTrigger>
                   <SelectContent>
@@ -303,7 +310,7 @@ export function CourseList() {
                     })
                   }
                 >
-                  <SelectTrigger id="modalidad">
+                  <SelectTrigger id="modalidad" className="w-full">
                     <SelectValue placeholder="Todas las modalidades" />
                   </SelectTrigger>
                   <SelectContent>
@@ -329,7 +336,7 @@ export function CourseList() {
                     })
                   }
                 >
-                  <SelectTrigger id="ciudad">
+                  <SelectTrigger id="ciudad" className="w-full">
                     <SelectValue placeholder="Todas las ciudades" />
                   </SelectTrigger>
                   <SelectContent>
@@ -355,7 +362,7 @@ export function CourseList() {
                     })
                   }
                 >
-                  <SelectTrigger id="proyecto">
+                  <SelectTrigger id="proyecto" className="w-full">
                     <SelectValue placeholder="Todos los proyectos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -381,7 +388,7 @@ export function CourseList() {
                     })
                   }
                 >
-                  <SelectTrigger id="estado">
+                  <SelectTrigger id="estado" className="w-full">
                     <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
                   <SelectContent>
@@ -407,7 +414,7 @@ export function CourseList() {
                     })
                   }
                 >
-                  <SelectTrigger id="cargo">
+                  <SelectTrigger id="cargo" className="w-full">
                     <SelectValue placeholder="Todos los cargos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -435,7 +442,7 @@ export function CourseList() {
                     })
                   }
                 >
-                  <SelectTrigger id="clasificacion">
+                  <SelectTrigger id="clasificacion" className="w-full">
                     <SelectValue placeholder="Todas las clasificaciones" />
                   </SelectTrigger>
                   <SelectContent>
@@ -491,6 +498,13 @@ export function CourseList() {
           )}
         </div>
       )}
+
+      <div>
+        <Button onClick={() => setIsCreateOpen(true)}>
+          Crear nuevo curso
+          <Plus />
+        </Button>
+      </div>
 
       {/* Results Count */}
       <div className="text-sm text-muted-foreground">
@@ -549,6 +563,13 @@ export function CourseList() {
           )}
         </>
       )}
+
+      {/* Create Course Modal */}
+      <CreateCourseModal
+        isOpen={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSuccess={handleCourseCreated}
+      />
     </div>
   );
 }

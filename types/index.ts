@@ -30,7 +30,7 @@ export interface Course {
   CC: string;
   Cargo: string;
   IdEmpleado: number;
-  AplicaEficiencia: boolean;
+  AplicaEficiencia: number;
   // Legacy fields for backward compatibility
   Nombre?: string;
   Texto?: string;
@@ -74,5 +74,5 @@ export interface Capacitacion {
   NombreCompleto: string;
   Cedula: string;
   "Lugar actual": string;
-  "Correo Electronico"?: string;
+  "E- Mail Soporte"?: string;
 }

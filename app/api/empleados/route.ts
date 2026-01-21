@@ -4,9 +4,43 @@ import { getConnection } from "@/lib/bd-connection";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const action = searchParams.get("action");
     const cedula = searchParams.get("cedula");
     const month = searchParams.get("month");
     const day = searchParams.get("day");
+
+    // Handle distinct values request for course assignment
+    if (action === "getDistinctValues") {
+      const connection = await getConnection();
+      try {
+        const [lugarRows] = await connection.execute(
+          `SELECT DISTINCT \`Lugar actual\` FROM \`09_ContratoActual\` WHERE \`Lugar actual\` IS NOT NULL AND \`Lugar actual\` != '' ORDER BY \`Lugar actual\``
+        );
+        const [ciudadRows] = await connection.execute(
+          `SELECT DISTINCT \`Ciudad actual\` FROM \`09_ContratoActual\` WHERE \`Ciudad actual\` IS NOT NULL AND \`Ciudad actual\` != '' ORDER BY \`Ciudad actual\``
+        );
+        const [ccRows] = await connection.execute(
+          `SELECT DISTINCT \`Centro de costos actual\` FROM \`09_ContratoActual\` WHERE \`Centro de costos actual\` IS NOT NULL AND \`Centro de costos actual\` != 0 ORDER BY \`Centro de costos actual\``
+        );
+        const [antiguedadRows] = await connection.execute(
+          `SELECT DISTINCT \`Antiguedad\` FROM \`listaReglas\` WHERE \`Antiguedad\` IS NOT NULL AND \`Antiguedad\` != '' ORDER BY \`Antiguedad\``
+        );
+
+        await connection.end();
+
+        return NextResponse.json({
+          lugares: (lugarRows as any[]).map((r) => r["Lugar actual"]),
+          ciudades: (ciudadRows as any[]).map((r) => r["Ciudad actual"]),
+          centrosCostos: (ccRows as any[]).map((r) =>
+            r["Centro de costos actual"].toString()
+          ),
+          antiguedades: (antiguedadRows as any[]).map((r) => r["Antiguedad"]),
+        });
+      } catch (error) {
+        await connection.end();
+        throw error;
+      }
+    }
 
     if (!cedula) {
       return NextResponse.json(

@@ -9,13 +9,11 @@ import { Play, Clock, BookOpen, Building } from "lucide-react";
 interface EmployeeCourseIntroProps {
   course: Course;
   onStartTest: () => void;
-  onBack: () => void;
 }
 
 export function EmployeeCourseIntro({
   course,
   onStartTest,
-  onBack,
 }: EmployeeCourseIntroProps) {
   const hasVideo =
     course.InduccionVideo ||
@@ -26,9 +24,6 @@ export function EmployeeCourseIntro({
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-6">
-        <Button variant="outline" onClick={onBack} className="mb-4">
-          ← Volver
-        </Button>
         <h1 className="text-3xl font-bold mb-2">{course.Curso}</h1>
         <div className="flex flex-wrap gap-2 mb-4">
           <Badge variant="secondary">
@@ -37,7 +32,8 @@ export function EmployeeCourseIntro({
           </Badge>
           <Badge variant="outline">
             <BookOpen className="w-4 h-4 mr-1" />
-            {course["Total Preguntas"]} preguntas
+            {course["Total Preguntas"]} pregunta
+            {course["Total Preguntas"] > 1 ? "s" : ""}
           </Badge>
           <Badge variant="outline">
             <Building className="w-4 h-4 mr-1" />
@@ -55,28 +51,40 @@ export function EmployeeCourseIntro({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-semibold">Ciudad:</span> {course.Ciudad}
-              </div>
-              <div>
-                <span className="font-semibold">Modalidad:</span>{" "}
-                {course.Modalidad}
-              </div>
-              <div>
-                <span className="font-semibold">Clasificación:</span>{" "}
-                {course.Clasificacion}
-              </div>
-              <div>
-                <span className="font-semibold">Estado:</span> {course.Estado}
-              </div>
-              <div>
-                <span className="font-semibold">Año:</span>{" "}
-                {course["Ano Programacion"]}
-              </div>
-              <div>
-                <span className="font-semibold">Mes:</span>{" "}
-                {course["Mes Programacion"]}
-              </div>
+              {course.Ciudad && (
+                <div>
+                  <span className="font-semibold">Ciudad:</span> {course.Ciudad}
+                </div>
+              )}
+              {course.Modalidad && (
+                <div>
+                  <span className="font-semibold">Modalidad:</span>{" "}
+                  {course.Modalidad}
+                </div>
+              )}
+              {course.Clasificacion && (
+                <div>
+                  <span className="font-semibold">Clasificación:</span>{" "}
+                  {course.Clasificacion}
+                </div>
+              )}
+              {course.Estado && (
+                <div>
+                  <span className="font-semibold">Estado:</span> {course.Estado}
+                </div>
+              )}
+              {course["Ano Programacion"] && (
+                <div>
+                  <span className="font-semibold">Año:</span>{" "}
+                  {course["Ano Programacion"]}
+                </div>
+              )}
+              {course["Mes Programacion"] && (
+                <div>
+                  <span className="font-semibold">Mes:</span>{" "}
+                  {course["Mes Programacion"]}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -186,7 +194,8 @@ export function EmployeeCourseIntro({
               <div className="flex items-center justify-between">
                 <span>Total de preguntas:</span>
                 <Badge variant="outline">
-                  {course["Total Preguntas"]} preguntas
+                  {course["Total Preguntas"]} pregunta
+                  {course["Total Preguntas"] > 1 ? "s" : ""}
                 </Badge>
               </div>
               <div className="p-4 bg-muted rounded-lg border">

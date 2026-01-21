@@ -250,8 +250,11 @@ export function CourseResults({ course }: CourseResultsProps) {
     // Prepare employee data with email addresses
     const employees = selectedCapacitaciones.map((cap) => ({
       capacitacionId: cap.Id,
-      nombre: cap["Primer Nombre"] || cap.NombreCompleto.split(" ")[0],
-      email: cap["Correo Electronico"] || "",
+      nombre:
+        (cap["Primer Nombre"] && cap["Primer Nombre"].trim()) ||
+        cap.NombreCompleto.split(" ")[0] ||
+        "Empleado",
+      email: (cap["E- Mail Soporte"] && cap["E- Mail Soporte"].trim()) || "",
     }));
 
     // Show loading toast
@@ -397,22 +400,33 @@ export function CourseResults({ course }: CourseResultsProps) {
         await generateMultipleCertificates(certificatesToDownload, course);
       }
 
+      // Mark certificates as printed in the database
+      const capacitacionIds = certificatesToDownload.map((cap) => cap.Id);
+      const response = await fetch("/api/capacitaciones", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          capacitacionIds,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Error marking certificates as printed");
+        toast.warning(
+          "Certificados descargados, pero no se pudieron marcar como impresos"
+        );
+      } else {
+        // Refresh capacitaciones to show updated Impreso status
+        await fetchAllCapacitaciones();
+      }
+
       toast.success(
         `Certificados descargados exitosamente para ${
           certificatesToDownload.length
         } empleado${certificatesToDownload.length !== 1 ? "s" : ""}`
       );
-
-      // Log the action for debugging
-      console.log("Certificados generados para:", {
-        option: certificateOption,
-        count: certificatesToDownload.length,
-        students: certificatesToDownload.map((cap) => ({
-          id: cap.Id,
-          name: cap.NombreCompleto,
-          cedula: cap.Cedula,
-        })),
-      });
     } catch (error) {
       console.error("Error generating certificates:", error);
       toast.error(

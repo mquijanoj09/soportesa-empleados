@@ -99,12 +99,12 @@ export default function CourseDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto p-12">
         {/* Back Button */}
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.push("/capacitaciones")}
+            onClick={() => router.push("/gestion-humana")}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground h-auto"
           >
             <ArrowLeft className="w-4 h-4" />

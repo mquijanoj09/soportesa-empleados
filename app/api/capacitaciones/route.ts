@@ -40,10 +40,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId");
+    const idEmpleado = searchParams.get("idEmpleado");
 
-    if (!courseId) {
+    if (!courseId && !idEmpleado) {
       return NextResponse.json(
-        { error: "courseId parameter is required" },
+        { error: "courseId or idEmpleado parameter is required" },
         { status: 400 }
       );
     }
@@ -51,6 +52,58 @@ export async function GET(request: NextRequest) {
     const connection = await getConnection();
 
     try {
+      // If idEmpleado is provided, return capacitaciones for that employee
+      if (idEmpleado) {
+        const [rows] = await connection.execute(
+          `SELECT 
+            c.Id,
+            c.IdEmpleado,
+            c.IdCurso,
+            c.Curso,
+            c.\`Fecha de terminacion\`,
+            c.\`Entidad Educativa\`,
+            c.\`Horas Programadas\`,
+            c.Realizado,
+            c.Graduado,
+            c.Impreso,
+            c.Cancelado,
+            c.Modalidad,
+            c.\`Ano Programacion\`,
+            c.\`Mes Programacion\`,
+            c.Aplica,
+            c.Eficiente,
+            c.EficienciaObs,
+            c.CentroCapacitacion,
+            c.Nota,
+            c.Buenas,
+            c.CorreoEnviado,
+            c.clasificacion,
+            c.FechaUltimoEmail,
+            c.totalEnvios
+          FROM \`23_Capacitacion\` c
+          WHERE c.IdEmpleado = ?
+          ORDER BY c.Realizado ASC, c.Id DESC`,
+          [idEmpleado]
+        );
+
+        const capacitaciones = (rows as any[]).map((row) => ({
+          ...row,
+          Realizado: Boolean(row.Realizado),
+          Graduado: Boolean(row.Graduado),
+          Impreso: Boolean(row.Impreso),
+          Cancelado: Boolean(row.Cancelado),
+          Aplica: Boolean(row.Aplica),
+          Eficiente: Boolean(row.Eficiente),
+          CentroCapacitacion: Boolean(row.CentroCapacitacion),
+          CorreoEnviado: Boolean(row.CorreoEnviado),
+        }));
+
+        return NextResponse.json({
+          data: capacitaciones,
+        });
+      }
+
+      // Otherwise, get capacitaciones by courseId
       // Get total count for pagination info
       const [countResult] = await connection.execute(
         `SELECT COUNT(*) as total 
@@ -94,6 +147,7 @@ export async function GET(request: NextRequest) {
           p.\`Primer Apellido\`,
           p.\`Segundo Apellido\`,
           p.\`Numero Identificacion\` as Cedula,
+          p.\`E- Mail Soporte\`,
           CONCAT_WS(' ', 
             TRIM(p.\`Primer Nombre\`), 
             TRIM(p.\`Segundo Nombre\`), 
@@ -137,6 +191,98 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error("Error fetching capacitaciones:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { idEmpleado, idCurso, nota, graduado, buenas } = body;
+
+    if (!idEmpleado || !idCurso || nota === undefined || buenas === undefined) {
+      return NextResponse.json(
+        { error: "idEmpleado, idCurso, nota, and buenas are required" },
+        { status: 400 }
+      );
+    }
+
+    const connection = await getConnection();
+
+    try {
+      // Get current date in format YYYY-MM-DD
+      const currentDate = new Date().toISOString().split("T")[0];
+
+      // Update the capacitacion record
+      await connection.execute(
+        `UPDATE \`23_Capacitacion\` 
+         SET 
+           \`Fecha de terminacion\` = ?,
+           Realizado = 1,
+           Graduado = ?,
+           Nota = ?,
+           Buenas = ?
+         WHERE IdEmpleado = ? AND IdCurso = ?`,
+        [currentDate, graduado ? 1 : 0, nota, buenas, idEmpleado, idCurso]
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: "Capacitación actualizada correctamente",
+      });
+    } finally {
+      await connection.end();
+    }
+  } catch (error) {
+    console.error("Error updating capacitacion:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { capacitacionIds } = body;
+
+    if (
+      !capacitacionIds ||
+      !Array.isArray(capacitacionIds) ||
+      capacitacionIds.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "capacitacionIds array is required" },
+        { status: 400 }
+      );
+    }
+
+    const connection = await getConnection();
+
+    try {
+      // Update Impreso field for all specified capacitacion IDs
+      const placeholders = capacitacionIds.map(() => "?").join(",");
+      await connection.execute(
+        `UPDATE \`23_Capacitacion\` 
+         SET Impreso = 1
+         WHERE Id IN (${placeholders})`,
+        capacitacionIds
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: "Certificados marcados como impresos correctamente",
+        count: capacitacionIds.length,
+      });
+    } finally {
+      await connection.end();
+    }
+  } catch (error) {
+    console.error("Error marking certificates as printed:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

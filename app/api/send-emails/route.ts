@@ -88,14 +88,14 @@ export async function POST(request: NextRequest) {
             console.log(`Email sent successfully to ${employee.email}`);
 
             // Update database: increment email count and update last email date
-            // await connection.execute(
-            //   `UPDATE \`23_Capacitacion\`
-            //    SET CorreoEnviado = 1,
-            //        FechaUltimoEmail = NOW(),
-            //        totalEnvios = totalEnvios + 1
-            //    WHERE Id = ?`,
-            //   [employee.capacitacionId]
-            // );
+            await connection.execute(
+              `UPDATE \`23_Capacitacion\`
+               SET CorreoEnviado = 1,
+                   FechaUltimoEmail = NOW(),
+                   totalEnvios = totalEnvios + 1
+               WHERE Id = ?`,
+              [employee.capacitacionId]
+            );
 
             return { success: true, email: employee.email };
           } catch (error) {

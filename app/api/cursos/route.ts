@@ -141,7 +141,7 @@ export async function GET(request: Request) {
         CC: courseData.CC,
         Cargo: courseData.Cargo,
         IdEmpleado: courseData.IdEmpleado,
-        AplicaEficiencia: Boolean(courseData.AplicaEficiencia),
+        AplicaEficiencia: courseData.AplicaEficiencia,
         // Legacy fields for backward compatibility
         Nombre: courseData.Curso,
         Texto: courseDetails.Texto,
@@ -210,7 +210,7 @@ export async function GET(request: Request) {
       CC: row.CC,
       Cargo: row.Cargo,
       IdEmpleado: row.IdEmpleado,
-      AplicaEficiencia: Boolean(row.AplicaEficiencia),
+      AplicaEficiencia: row.AplicaEficiencia,
       // Legacy fields for backward compatibility
       Nombre: row.Curso,
       Texto: "",
@@ -226,5 +226,454 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Course ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const {
+      nombre,
+      entidad,
+      horas,
+      modalidad,
+      mesProgramacion,
+      anoProgramacion,
+      antiguedad,
+      clasificacion,
+      ciudad,
+      aplicaEficiencia,
+    } = body;
+
+    const conn = await getConnection();
+
+    try {
+      // Update the course in listaReglas table
+      const updateQuery = `
+        UPDATE listaReglas
+        SET 
+          Curso = ?,
+          Entidad = ?,
+          Horas = ?,
+          Modalidad = ?,
+          \`Mes Programacion\` = ?,
+          \`Ano Programacion\` = ?,
+          Antiguedad = ?,
+          Clasificacion = ?,
+          Ciudad = ?,
+          AplicaEficiencia = ?
+        WHERE Id = ?
+      `;
+
+      await conn.execute(updateQuery, [
+        nombre,
+        entidad,
+        horas,
+        modalidad,
+        mesProgramacion,
+        anoProgramacion,
+        antiguedad,
+        clasificacion,
+        ciudad,
+        parseInt(aplicaEficiencia) || 0,
+        id,
+      ]);
+
+      await conn.end();
+
+      return NextResponse.json({
+        success: true,
+        message: "Curso actualizado exitosamente",
+      });
+    } catch (error) {
+      await conn.end();
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Error updating course:", error);
+    return NextResponse.json(
+      { error: error.message || "Error al actualizar el curso" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const {
+      nombre,
+      entidad,
+      horas,
+      modalidad,
+      mesProgramacion,
+      anoProgramacion,
+      clasificacion,
+      tipo,
+      porcentajeAprobacion,
+      tiempoMaximo,
+      repeticionesMaximo,
+      texto,
+      induccionVideo,
+      induccionVideo2,
+      induccionVideo3,
+      induccionVideo4,
+      preguntas,
+      assignment,
+    } = body;
+
+    // Validate required fields
+    const missingFields = [];
+    if (!nombre?.trim()) missingFields.push("nombre");
+    if (!entidad?.trim()) missingFields.push("entidad");
+    if (!modalidad?.trim()) missingFields.push("modalidad");
+    if (!mesProgramacion?.trim()) missingFields.push("mes programación");
+    if (!anoProgramacion?.trim()) missingFields.push("año programación");
+    if (!clasificacion?.trim()) missingFields.push("clasificación");
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Los siguientes campos son obligatorios: ${missingFields.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const conn = await getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      // Determine antiguedad and ciudad based on assignment
+      let antiguedad = "";
+      let ciudad = "";
+      let lugar = "";
+      let cc = "";
+
+      if (assignment) {
+        if (assignment.type === "lugar") {
+          lugar = assignment.value;
+        } else if (assignment.type === "ciudad") {
+          ciudad = assignment.value;
+        } else if (assignment.type === "cc") {
+          cc = assignment.value;
+        }
+      }
+
+      // Insert the new course into listaReglas table
+      const insertQuery = `
+        INSERT INTO listaReglas (
+          Curso,
+          Entidad,
+          Horas,
+          Modalidad,
+          \`Mes Programacion\`,
+          \`Ano Programacion\`,
+          Antiguedad,
+          Clasificacion,
+          Ciudad,
+          Lugar,
+          CC,
+          AplicaEficiencia,
+          \`Existe Plataforma Interna\`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `;
+
+      const [result] = await conn.execute(insertQuery, [
+        nombre,
+        entidad,
+        horas ? parseInt(horas) : 0,
+        modalidad,
+        mesProgramacion,
+        anoProgramacion,
+        antiguedad,
+        clasificacion,
+        ciudad,
+        lugar,
+        cc,
+        parseInt(body.aplicaEficiencia) || 0,
+      ]);
+
+      const courseId = (result as any).insertId;
+
+      // Insert into cap_evaluacion table
+      const capEvaluacionQuery = `
+        INSERT INTO cap_evaluacion (
+          Id,
+          Nombre,
+          Tipo,
+          Publicado,
+          PorcentajeAprobacion,
+          TiempoMaximo,
+          RepeticionesMaximo,
+          Texto,
+          InduccionImagen,
+          InduccionVideo,
+          InduccionVideo2,
+          InduccionVideo3,
+          InduccionVideo4
+        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      await conn.execute(capEvaluacionQuery, [
+        courseId,
+        nombre,
+        tipo || "RecursoHumano",
+        parseInt(porcentajeAprobacion),
+        parseInt(tiempoMaximo) || 0,
+        parseInt(repeticionesMaximo) || 0,
+        texto || "",
+        "",
+        induccionVideo || "",
+        induccionVideo2 || "",
+        induccionVideo3 || "",
+        induccionVideo4 || "",
+      ]);
+
+      // Insert questions and answers if provided
+      if (preguntas && Array.isArray(preguntas) && preguntas.length > 0) {
+        for (const pregunta of preguntas) {
+          // Insert question
+          const preguntaQuery = `
+            INSERT INTO cap_pregunta (
+              IdEvaluacion,
+              Pregunta,
+              tipo,
+              desordenarPreguntas,
+              valor
+            ) VALUES (?, ?, ?, ?, ?)
+          `;
+
+          const [preguntaResult] = await conn.execute(preguntaQuery, [
+            courseId,
+            pregunta.Pregunta || pregunta.texto,
+            pregunta.tipo || 1,
+            pregunta.desordenarPreguntas ? 1 : 0,
+            pregunta.valor || 1,
+          ]);
+
+          const preguntaId = (preguntaResult as any).insertId;
+
+          if (
+            pregunta.respuestas &&
+            Array.isArray(pregunta.respuestas) &&
+            pregunta.respuestas.length > 0
+          ) {
+            for (let i = 0; i < pregunta.respuestas.length; i++) {
+              const respuesta = pregunta.respuestas[i];
+              const respuestaQuery = `
+                INSERT INTO cap_respuesta (
+                  Id,
+                  IdPregunta,
+                  IdEvaluacion,
+                  txtRespuesta,
+                  txtFeedBack,
+                  Ok
+                ) VALUES (?, ?, ?, ?, ?, ?)
+              `;
+
+              await conn.execute(respuestaQuery, [
+                i + 1,
+                preguntaId,
+                courseId,
+                respuesta.txtRespuesta || respuesta.texto,
+                respuesta.txtFeedBack || "",
+                respuesta.Ok ? 1 : 0,
+              ]);
+            }
+          }
+        }
+      }
+
+      // Assign course to employees based on assignment criteria
+      if (assignment && assignment.type && assignment.value) {
+        let employeeQuery = "";
+        let queryParams: any[] = [];
+
+        if (assignment.type === "ids") {
+          // Split comma-separated IDs and clean them
+          const ids = assignment.value
+            .split(",")
+            .map((id: string) => id.trim())
+            .filter((id: string) => id);
+
+          if (ids.length > 0) {
+            employeeQuery = `
+              SELECT IdEmpleado 
+              FROM \`09_ContratoActual\` 
+              WHERE IdEmpleado IN (${ids.map(() => "?").join(",")})
+            `;
+            queryParams = ids;
+          }
+        } else if (assignment.type === "lugar") {
+          employeeQuery = `
+            SELECT IdEmpleado 
+            FROM \`09_ContratoActual\` 
+            WHERE \`Lugar actual\` = ?
+          `;
+          queryParams = [assignment.value];
+        } else if (assignment.type === "ciudad") {
+          employeeQuery = `
+            SELECT IdEmpleado 
+            FROM \`09_ContratoActual\` 
+            WHERE \`Ciudad actual\` = ?
+          `;
+          queryParams = [assignment.value];
+        } else if (assignment.type === "cc") {
+          employeeQuery = `
+            SELECT IdEmpleado 
+            FROM \`09_ContratoActual\` 
+            WHERE \`Centro de costos actual\` = ?
+          `;
+          queryParams = [assignment.value];
+        }
+
+        if (employeeQuery) {
+          const [employees] = await conn.execute(employeeQuery, queryParams);
+
+          // Insert into 23_Capacitacion for each employee
+          if ((employees as any[]).length > 0) {
+            for (const employee of employees as any[]) {
+              const capacitacionQuery = `
+                INSERT INTO \`23_Capacitacion\` (
+                  IdEmpleado,
+                  IdCurso,
+                  Curso,
+                  \`Fecha de terminacion\`,
+                  \`Entidad Educativa\`,
+                  \`Horas Programadas\`,
+                  Modalidad,
+                  \`Ano Programacion\`,
+                  \`Mes Programacion\`,
+                  clasificacion,
+                  Nota,
+                  EficienciaObs
+                ) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, 0, '')
+              `;
+
+              await conn.execute(capacitacionQuery, [
+                employee.IdEmpleado,
+                courseId,
+                nombre,
+                entidad,
+                horas ? parseInt(horas) : 0,
+                modalidad,
+                anoProgramacion,
+                mesProgramacion,
+                clasificacion,
+              ]);
+            }
+          }
+        }
+      }
+
+      await conn.commit();
+      await conn.end();
+
+      return NextResponse.json({
+        success: true,
+        message: "Curso creado exitosamente",
+        courseId: courseId,
+      });
+    } catch (error) {
+      await conn.rollback();
+      await conn.end();
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Error creating course:", error);
+    return NextResponse.json(
+      { error: error.message || "Error al crear el curso" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Course ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const conn = await getConnection();
+
+    try {
+      await conn.beginTransaction();
+
+      // First, get all question IDs for this course to delete answers
+      const getQuestionsQuery = `
+        SELECT Id FROM cap_pregunta WHERE IdEvaluacion = ?
+      `;
+      const [questions] = await conn.execute(getQuestionsQuery, [id]);
+
+      // Delete answers for each question
+      if ((questions as any[]).length > 0) {
+        const questionIds = (questions as any[]).map((q) => q.Id);
+        const deleteAnswersQuery = `
+          DELETE FROM cap_respuesta WHERE IdPregunta IN (${questionIds.join(",")})
+        `;
+        await conn.execute(deleteAnswersQuery);
+      }
+
+      // Delete questions
+      const deleteQuestionsQuery = `
+        DELETE FROM cap_pregunta WHERE IdEvaluacion = ?
+      `;
+      await conn.execute(deleteQuestionsQuery, [id]);
+
+      // Delete from cap_evaluacion
+      const deleteEvaluacionQuery = `
+        DELETE FROM cap_evaluacion WHERE Id = ?
+      `;
+      await conn.execute(deleteEvaluacionQuery, [id]);
+
+      // Finally, delete the course from listaReglas table
+      const deleteQuery = `DELETE FROM listaReglas WHERE Id = ?`;
+      const [result] = await conn.execute(deleteQuery, [id]);
+
+      const affectedRows = (result as any).affectedRows;
+
+      await conn.commit();
+      await conn.end();
+
+      if (affectedRows === 0) {
+        return NextResponse.json(
+          { error: "Curso no encontrado" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Curso eliminado exitosamente",
+      });
+    } catch (error) {
+      await conn.rollback();
+      await conn.end();
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Error deleting course:", error);
+    return NextResponse.json(
+      { error: error.message || "Error al eliminar el curso" },
+      { status: 500 }
+    );
   }
 }

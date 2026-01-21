@@ -4,8 +4,6 @@ import type { Course } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Edit,
@@ -34,6 +31,8 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useCourse } from "@/app/context/useCourse";
+import { EditCourseModal } from "./edit-course-modal";
 
 interface CourseCardProps {
   course: Course;
@@ -41,30 +40,16 @@ interface CourseCardProps {
 
 export function CourseCard({ course }: CourseCardProps) {
   const router = useRouter();
+  const { actions } = useCourse();
 
   // Modal states
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Form states for edit modal
-  const [editForm, setEditForm] = useState({
-    nombre: course.Nombre || course.Curso,
-    entidad: course.Entidad || "",
-    horas: (course.Horas || 0).toString(),
-    modalidad: course.Modalidad || "",
-    programacion: `${course["Mes Programacion"] || ""}/${
-      course["Ano Programacion"] || ""
-    }`,
-    antiguedad: course.Antiguedad || "",
-    clasificacion: course.Clasificacion || "",
-    ciudad: course.Ciudad || "",
-  });
-
-  console.log("Rendering CourseCard for course:", course);
-
   const handleCardClick = () => {
-    router.push(`/capacitaciones/${course.Id}`);
+    router.push(`/gestion-humana/${course.Id}`);
   };
 
   const handleButtonClick = (e: React.MouseEvent, action: () => void) => {
@@ -72,21 +57,76 @@ export function CourseCard({ course }: CourseCardProps) {
     action();
   };
 
-  const handleEditSubmit = () => {
-    // TODO: Implement actual edit functionality
-    toast.success("Funcionalidad de edición en desarrollo");
-    setIsEditOpen(false);
+  const handleDeleteConfirm = async () => {
+    try {
+      const response = await fetch(`/api/cursos?id=${course.Id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error al eliminar el curso");
+      }
+
+      toast.success("Curso eliminado exitosamente");
+      setIsDeleteOpen(false);
+
+      // Refetch all courses to update the list
+      await actions.fetchAllCourses();
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Error al eliminar el curso"
+      );
+    }
   };
 
-  const handleDeleteConfirm = () => {
-    // TODO: Implement actual delete functionality
-    toast.success("Funcionalidad de eliminación en desarrollo");
-    setIsDeleteOpen(false);
-  };
+  const handleDuplicate = async () => {
+    try {
+      // First, fetch the full course data including questions
+      const fetchResponse = await fetch(`/api/cursos?id=${course.Id}`);
+      if (!fetchResponse.ok) {
+        throw new Error("Error al obtener los datos del curso");
+      }
 
-  const handleDuplicate = () => {
-    // TODO: Implement actual duplicate functionality
-    toast.success("Curso duplicado (funcionalidad en desarrollo)");
+      const fullCourse = await fetchResponse.json();
+
+      // Now create the duplicate with all the data
+      const response = await fetch("/api/cursos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre: `${course.Nombre || course.Curso} (Copia)`,
+          entidad: course.Entidad || "",
+          horas: (course.Horas || 0).toString(),
+          modalidad: course.Modalidad || "",
+          mesProgramacion: course["Mes Programacion"] || "",
+          anoProgramacion: course["Ano Programacion"] || "",
+          antiguedad: course.Antiguedad || "",
+          clasificacion: course.Clasificacion || "",
+          ciudad: course.Ciudad || "",
+          preguntas: fullCourse.preguntas || [],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error al duplicar el curso");
+      }
+
+      toast.success("Curso duplicado exitosamente");
+      setIsDuplicateOpen(false);
+
+      // Refetch all courses to update the list
+      await actions.fetchAllCourses();
+    } catch (error) {
+      console.error("Error duplicating course:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Error al duplicar el curso"
+      );
+    }
   };
 
   return (
@@ -142,7 +182,7 @@ export function CourseCard({ course }: CourseCardProps) {
                 size="sm"
                 onClick={(e) =>
                   handleButtonClick(e, () => {
-                    handleDuplicate();
+                    setIsDuplicateOpen(true);
                   })
                 }
                 className="h-7 w-7 p-0 hover:bg-blue-500/10"
@@ -332,137 +372,12 @@ export function CourseCard({ course }: CourseCardProps) {
       </Card>
 
       {/* Edit Modal */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Editar Curso</DialogTitle>
-            <DialogDescription>
-              Modifica la información del curso. Los cambios se guardarán al
-              confirmar.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="nombre" className="text-right">
-                Nombre
-              </Label>
-              <Input
-                id="nombre"
-                value={editForm.nombre}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, nombre: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="entidad" className="text-right">
-                Entidad
-              </Label>
-              <Input
-                id="entidad"
-                value={editForm.entidad}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, entidad: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="horas" className="text-right">
-                Horas
-              </Label>
-              <Input
-                id="horas"
-                type="number"
-                value={editForm.horas}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, horas: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="modalidad" className="text-right">
-                Modalidad
-              </Label>
-              <Input
-                id="modalidad"
-                value={editForm.modalidad}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, modalidad: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="programacion" className="text-right">
-                Programación
-              </Label>
-              <Input
-                id="programacion"
-                placeholder="MM/YY"
-                value={editForm.programacion}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, programacion: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="antiguedad" className="text-right">
-                Antigüedad
-              </Label>
-              <Input
-                id="antiguedad"
-                value={editForm.antiguedad}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, antiguedad: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="ciudad" className="text-right">
-                Ciudad
-              </Label>
-              <Input
-                id="ciudad"
-                value={editForm.ciudad}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, ciudad: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="clasificacion" className="text-right">
-                Clasificación
-              </Label>
-              <Input
-                id="clasificacion"
-                value={editForm.clasificacion}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, clasificacion: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsEditOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="button" onClick={handleEditSubmit}>
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EditCourseModal
+        isOpen={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSuccess={actions.fetchAllCourses}
+        course={course}
+      />
 
       {/* Delete Confirmation Modal */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
@@ -492,6 +407,36 @@ export function CourseCard({ course }: CourseCardProps) {
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Confirmation Modal */}
+      <Dialog open={isDuplicateOpen} onOpenChange={setIsDuplicateOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar Duplicación</DialogTitle>
+            <DialogDescription>
+              ¿Deseas crear una copia del curso "{course.Nombre}"?
+              <br />
+              <span className="text-muted-foreground text-sm">
+                Se creará un nuevo curso con el mismo contenido y el nombre
+                "(Copia)" al final.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDuplicateOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleDuplicate}>
+              <Copy className="w-4 h-4 mr-2" />
+              Duplicar
             </Button>
           </DialogFooter>
         </DialogContent>
