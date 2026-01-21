@@ -20,6 +20,7 @@ const userTypes = [
       "Seguimiento de asistencia, registro de horas trabajadas y gestión de permisos",
     icon: "/tiempo-icon.svg",
     href: "https://www.sdigitales.com/Soporte/Tiempo",
+    external: true,
     features: [
       "Registro de entradas/salidas",
       "Control de horas extras",
@@ -40,6 +41,7 @@ const userTypes = [
       "Administración de nómina, pagos, deducciones y reportes financieros del personal",
     icon: "/capacitaciones-icon.svg",
     href: "https://www.sdigitales.com/Soporte/Nomina/Nomina.php",
+    external: true,
     features: [
       "Procesar nómina mensual",
       "Gestionar deducciones",
@@ -61,6 +63,7 @@ const userTypes = [
       "Portal dedicado para empleados con acceso a sus capacitaciones y perfil personal",
     icon: "/tiempo-icon.svg",
     href: "/capacitaciones",
+    external: false,
     features: [
       "Ver cursos asignados",
       "Realizar evaluaciones",
@@ -81,6 +84,7 @@ const userTypes = [
       "Acceso completo para gestión de capacitaciones, empleados y administración del sistema",
     icon: "/capacitaciones-icon.svg",
     href: "/gestion-humana",
+    external: false,
     features: [
       "Crear y gestionar cursos",
       "Administrar empleados",
@@ -119,6 +123,8 @@ export default function HomePage() {
             <Link
               key={userType.title}
               href={userType.href}
+              target={userType.external ? "_blank" : undefined}
+              rel={userType.external ? "noopener noreferrer" : undefined}
               className={`block ${userType.comingSoon ? "pointer-events-none" : ""}`}
             >
               <Card
