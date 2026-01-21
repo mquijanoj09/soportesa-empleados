@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     // Get the app URL from environment or use default
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const courseUrl = `${appUrl}/empleados?courseId=${courseId}`;
+    const courseUrl = `${appUrl}/capacitaciones`;
 
     const connection = await getConnection();
 
