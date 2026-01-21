@@ -2,19 +2,74 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Copy the `.env.example` file to `.env.local` and fill in your values:
+
+```bash
+cp .env.example .env.local
+```
+
+Required environment variables:
+
+- **Database Configuration**: Your MySQL database credentials
+  - `DB_HOST`: Database host
+  - `DB_USER`: Database user
+  - `DB_NAME`: Database name
+  - `DB_PASSWORD`: Database password
+
+- **Resend API Key**: For sending emails
+  - `RESEND_API_KEY`: Get your API key from [https://resend.com/api-keys](https://resend.com/api-keys)
+  - You need to sign up for a free account at Resend
+  - Free tier includes 100 emails/day and 3,000 emails/month
+
+- **Application URL**:
+  - `NEXT_PUBLIC_APP_URL`: Your application URL (e.g., `http://localhost:3000` for local development)
+
+### 3. Set up Resend (for Email Functionality)
+
+1. Go to [https://resend.com](https://resend.com) and create a free account
+2. Navigate to API Keys section
+3. Create a new API key
+4. Copy the API key and add it to your `.env.local` file as `RESEND_API_KEY`
+5. (Optional) Add and verify your domain for production use. In development, you can use the default `onboarding@resend.dev` sender
+
+**Note**: Update the `from` field in `/app/api/send-emails/route.ts` to use your verified domain:
+
+```typescript
+from: "Your Name <your-email@yourdomain.com>";
+```
+
+### 4. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### 5. (Optional) Preview Email Templates
+
+This project uses [React Email](https://react.email) for email templates. To preview and develop email templates:
+
+```bash
+npm run email
+```
+
+This will open a preview interface at [http://localhost:3001](http://localhost:3001) where you can:
+
+- See live previews of your email templates
+- Test different props and states
+- View how emails render in different email clients
+- Export HTML for testing
+
+Email templates are located in the `/emails` directory.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
