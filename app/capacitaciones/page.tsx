@@ -58,6 +58,7 @@ export default function EmpleadosPage() {
 
   // Restore session from localStorage on mount
   useEffect(() => {
+    window.scrollTo(0, 0);
     const savedSession = localStorage.getItem("employeeSession");
     if (savedSession) {
       try {
@@ -72,31 +73,39 @@ export default function EmpleadosPage() {
     }
   }, []);
 
-  // Browser history management
+  // Scroll to top when view changes
   useEffect(() => {
-    const handlePopState = () => {
-      // Handle browser back button
-      switch (currentView) {
-        case "test-results":
-        case "test":
-        case "course-intro":
-          handleReturnToDashboard();
-          break;
-        case "dashboard":
-          handleLogout();
-          break;
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    window.scrollTo(0, 0);
   }, [currentView]);
 
+  // Browser history management - only handle back for test and course views
   useEffect(() => {
-    // Push state when view changes (except login)
-    if (currentView !== "login") {
+    const handlePopState = (event: PopStateEvent) => {
+      // Handle browser back button only for specific views
+      if (
+        currentView === "test-results" ||
+        currentView === "test" ||
+        currentView === "course-intro"
+      ) {
+        event.preventDefault();
+        handleReturnToDashboard();
+        // Re-push state to prevent actual navigation
+        window.history.pushState({ view: currentView }, "");
+      }
+      // For dashboard and login, allow natural browser navigation
+    };
+
+    // Only add listener when in views that need custom back behavior
+    if (
+      currentView === "test-results" ||
+      currentView === "test" ||
+      currentView === "course-intro"
+    ) {
       window.history.pushState({ view: currentView }, "");
+      window.addEventListener("popstate", handlePopState);
     }
+
+    return () => window.removeEventListener("popstate", handlePopState);
   }, [currentView]);
 
   const handleLoginSuccess = (loginData: {
@@ -248,11 +257,13 @@ export default function EmpleadosPage() {
         const capacitacionesData = await response.json();
 
         // Transform the flat array into pendientes/realizadas structure
+        // Pendientes: not graduated and not cancelled
         const pendientes = capacitacionesData.data.filter(
-          (c: any) => !c.Realizado && !c.Cancelado
+          (c: any) => !c.Graduado && !c.Cancelado
         );
+        // Realizadas: taken and graduated
         const realizadas = capacitacionesData.data.filter(
-          (c: any) => c.Realizado
+          (c: any) => c.Realizado && c.Graduado
         );
 
         const newCapacitaciones = { pendientes, realizadas };

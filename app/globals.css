@@ -8,7 +8,7 @@
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: JetBrains Mono, ui-monospace, monospace;
 
-  font-size: 21px;
+  font-size: 20px;
 
   --radius: 0.5rem;
   --background: #ffffff;
@@ -17,7 +17,7 @@
   --card-foreground: #09090b;
   --popover: #ffffff;
   --popover-foreground: #09090b;
-  --primary: #aa0000;
+  --primary: rgb(170, 0, 0);
   --primary-foreground: #fef2f2;
   --secondary: #2b122b;
   --secondary-foreground: #edf3f4;
@@ -174,7 +174,7 @@ body {
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.637 0.237 25.331);
+  --primary: rgb(170, 0, 0);
   --primary-foreground: oklch(0.971 0.013 17.38);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);

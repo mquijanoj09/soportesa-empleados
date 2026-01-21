@@ -99,7 +99,7 @@ export default function CourseDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-12">
+      <div className="max-w-6xl mx-auto p-6">
         {/* Back Button */}
         <div className="mb-6">
           <Button

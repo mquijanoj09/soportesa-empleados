@@ -289,3 +289,221 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { courseId, assignmentType, assignmentValue } = body;
+
+    if (!courseId || !assignmentType || !assignmentValue) {
+      return NextResponse.json(
+        { error: "courseId, assignmentType, and assignmentValue are required" },
+        { status: 400 }
+      );
+    }
+
+    const connection = await getConnection();
+
+    try {
+      // First, get the course details
+      const [courseRows] = await connection.execute(
+        `SELECT Curso, Entidad, Horas, Modalidad, \`Ano Programacion\`, \`Mes Programacion\`, clasificacion
+         FROM listaReglas 
+         WHERE Id = ?`,
+        [courseId]
+      );
+
+      if ((courseRows as any[]).length === 0) {
+        await connection.end();
+        return NextResponse.json(
+          { error: "Course not found" },
+          { status: 404 }
+        );
+      }
+
+      const course = (courseRows as any[])[0];
+
+      // Build employee query based on assignment type
+      let employeeQuery = "";
+      let queryParams: any[] = [];
+
+      if (assignmentType === "ids") {
+        const ids = assignmentValue
+          .split(",")
+          .map((id: string) => id.trim())
+          .filter((id: string) => id);
+
+        if (ids.length === 0) {
+          await connection.end();
+          return NextResponse.json(
+            { error: "No valid employee IDs provided" },
+            { status: 400 }
+          );
+        }
+
+        employeeQuery = `
+          SELECT IdEmpleado 
+          FROM \`09_ContratoActual\` 
+          WHERE IdEmpleado IN (${ids.map(() => "?").join(",")})
+          AND IdEmpleado NOT IN (
+            SELECT IdEmpleado 
+            FROM \`23_Capacitacion\` 
+            WHERE IdCurso = ?
+          )
+        `;
+        queryParams = [...ids, courseId];
+      } else if (assignmentType === "lugar") {
+        employeeQuery = `
+          SELECT IdEmpleado 
+          FROM \`09_ContratoActual\` 
+          WHERE \`Lugar actual\` = ?
+          AND IdEmpleado NOT IN (
+            SELECT IdEmpleado 
+            FROM \`23_Capacitacion\` 
+            WHERE IdCurso = ?
+          )
+        `;
+        queryParams = [assignmentValue, courseId];
+      } else if (assignmentType === "ciudad") {
+        employeeQuery = `
+          SELECT IdEmpleado 
+          FROM \`09_ContratoActual\` 
+          WHERE \`Ciudad actual\` = ?
+          AND IdEmpleado NOT IN (
+            SELECT IdEmpleado 
+            FROM \`23_Capacitacion\` 
+            WHERE IdCurso = ?
+          )
+        `;
+        queryParams = [assignmentValue, courseId];
+      } else if (assignmentType === "cc") {
+        employeeQuery = `
+          SELECT IdEmpleado 
+          FROM \`09_ContratoActual\` 
+          WHERE \`Centro de costos actual\` = ?
+          AND IdEmpleado NOT IN (
+            SELECT IdEmpleado 
+            FROM \`23_Capacitacion\` 
+            WHERE IdCurso = ?
+          )
+        `;
+        queryParams = [assignmentValue, courseId];
+      } else if (assignmentType === "antiguedad") {
+        employeeQuery = `
+          SELECT ca.IdEmpleado 
+          FROM \`09_ContratoActual\` ca
+          INNER JOIN listaReglas lr ON lr.Antiguedad = ?
+          WHERE ca.IdEmpleado NOT IN (
+            SELECT IdEmpleado 
+            FROM \`23_Capacitacion\` 
+            WHERE IdCurso = ?
+          )
+        `;
+        queryParams = [assignmentValue, courseId];
+      } else {
+        await connection.end();
+        return NextResponse.json(
+          { error: "Invalid assignment type" },
+          { status: 400 }
+        );
+      }
+
+      const [employees] = await connection.execute(employeeQuery, queryParams);
+
+      let addedCount = 0;
+      if ((employees as any[]).length > 0) {
+        for (const employee of employees as any[]) {
+          const capacitacionQuery = `
+            INSERT INTO \`23_Capacitacion\` (
+              IdEmpleado,
+              IdCurso,
+              Curso,
+              \`Fecha de terminacion\`,
+              \`Entidad Educativa\`,
+              \`Horas Programadas\`,
+              Modalidad,
+              \`Ano Programacion\`,
+              \`Mes Programacion\`,
+              clasificacion,
+              Nota,
+              EficienciaObs
+            ) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, 0, '')
+          `;
+
+          await connection.execute(capacitacionQuery, [
+            employee.IdEmpleado,
+            courseId,
+            course.Curso,
+            course.Entidad,
+            course.Horas || 0,
+            course.Modalidad,
+            course["Ano Programacion"],
+            course["Mes Programacion"],
+            course.clasificacion,
+          ]);
+          addedCount++;
+        }
+      }
+
+      await connection.end();
+
+      return NextResponse.json({
+        success: true,
+        message: `${addedCount} empleado(s) agregado(s) exitosamente`,
+        count: addedCount,
+      });
+    } catch (error) {
+      await connection.end();
+      throw error;
+    }
+  } catch (error) {
+    console.error("Error adding personnel:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { capacitacionIds } = body;
+
+    if (
+      !capacitacionIds ||
+      !Array.isArray(capacitacionIds) ||
+      capacitacionIds.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "capacitacionIds array is required" },
+        { status: 400 }
+      );
+    }
+
+    const connection = await getConnection();
+
+    try {
+      const placeholders = capacitacionIds.map(() => "?").join(",");
+      await connection.execute(
+        `DELETE FROM \`23_Capacitacion\` 
+         WHERE Id IN (${placeholders})`,
+        capacitacionIds
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: "Empleados eliminados del curso correctamente",
+        count: capacitacionIds.length,
+      });
+    } finally {
+      await connection.end();
+    }
+  } catch (error) {
+    console.error("Error removing personnel:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

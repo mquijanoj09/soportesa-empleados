@@ -26,7 +26,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <CourseProvider>
-            <header className="flex items-center h-20 border-b border-border bg-card justify-center">
+            <header className="flex items-center h-20 border-b border-border bg-primary justify-center">
               <Link
                 href="/"
                 className="flex items-center hover:opacity-80 transition-opacity"

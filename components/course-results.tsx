@@ -50,6 +50,7 @@ import {
   generateCertificate,
   generateMultipleCertificates,
 } from "@/lib/pdf-generator";
+import { EditPersonnelModal } from "@/components/edit-personnel-modal";
 
 type SortOption =
   | "id-asc"
@@ -1197,6 +1198,13 @@ export function CourseResults({ course }: CourseResultsProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Personnel Modal */}
+        <EditPersonnelModal
+          course={course}
+          currentCapacitaciones={allCapacitaciones}
+          onUpdate={fetchAllCapacitaciones}
+        />
       </div>
 
       {/* Search, Sort, and Filters */}

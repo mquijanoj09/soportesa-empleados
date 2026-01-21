@@ -86,19 +86,6 @@ export function EditCourseModal({
 
   const [questions, setQuestions] = useState<Question[]>([]);
 
-  // Step 3: Assignment
-  const [assignmentType, setAssignmentType] = useState<
-    "lugar" | "ciudad" | "cc" | "antiguedad" | "ids"
-  >("lugar");
-  const [assignmentValue, setAssignmentValue] = useState("");
-  const [assignmentIds, setAssignmentIds] = useState("");
-
-  // Distinct values from DB
-  const [lugares, setLugares] = useState<string[]>([]);
-  const [ciudades, setCiudades] = useState<string[]>([]);
-  const [centrosCostos, setCentrosCostos] = useState<string[]>([]);
-  const [antiguedades, setAntiguedades] = useState<string[]>([]);
-
   // Initialize form with course data when modal opens
   useEffect(() => {
     if (isOpen && course) {
@@ -145,18 +132,6 @@ export function EditCourseModal({
           } else {
             setQuestions([]);
           }
-
-          // Load assignment data
-          if (fullCourse.Lugar) {
-            setAssignmentType("lugar");
-            setAssignmentValue(fullCourse.Lugar);
-          } else if (fullCourse.Ciudad) {
-            setAssignmentType("ciudad");
-            setAssignmentValue(fullCourse.Ciudad);
-          } else if (fullCourse.CC) {
-            setAssignmentType("cc");
-            setAssignmentValue(fullCourse.CC);
-          }
         } catch (error) {
           console.error("Error fetching full course:", error);
           toast.error("Error al cargar los datos del curso");
@@ -164,22 +139,8 @@ export function EditCourseModal({
       };
 
       fetchFullCourse();
-      fetchDistinctValues();
     }
   }, [isOpen, course]);
-
-  const fetchDistinctValues = async () => {
-    try {
-      const response = await fetch("/api/empleados?action=getDistinctValues");
-      const data = await response.json();
-      setLugares(data.lugares || []);
-      setCiudades(data.ciudades || []);
-      setCentrosCostos(data.centrosCostos || []);
-      setAntiguedades(data.antiguedades || []);
-    } catch (error) {
-      console.error("Error fetching distinct values:", error);
-    }
-  };
 
   const validateStep1 = () => {
     const missingFields = [];
@@ -206,8 +167,6 @@ export function EditCourseModal({
   const handleNext = () => {
     if (step === 1 && validateStep1()) {
       setStep(2);
-    } else if (step === 2) {
-      setStep(3);
     }
   };
 
@@ -317,13 +276,11 @@ export function EditCourseModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
-          <DialogTitle>Editar Curso - Paso {step} de 3</DialogTitle>
+          <DialogTitle>Editar Curso - Paso {step} de 2</DialogTitle>
           <DialogDescription>
             {step === 1
               ? "Modifica la información básica del curso (*campos obligatorios)"
-              : step === 2
-                ? "Edita preguntas y respuestas del curso"
-                : "Actualiza la asignación del curso"}
+              : "Edita preguntas y respuestas del curso"}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
@@ -707,92 +664,6 @@ export function EditCourseModal({
               </div>
             </>
           )}
-
-          {step === 3 && (
-            <>
-              <div className="space-y-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right">Asignar por</Label>
-                  <div className="col-span-3">
-                    <Select
-                      value={assignmentType}
-                      onValueChange={(value: any) => {
-                        setAssignmentType(value);
-                        setAssignmentValue("");
-                        setAssignmentIds("");
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="lugar">Lugar Actual</SelectItem>
-                        <SelectItem value="ciudad">Ciudad Actual</SelectItem>
-                        <SelectItem value="cc">Centro de Costos</SelectItem>
-                        <SelectItem value="antiguedad">Antigüedad</SelectItem>
-                        <SelectItem value="ids">IDs Específicos</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {assignmentType === "ids" ? (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">IDs</Label>
-                    <Input
-                      value={assignmentIds}
-                      onChange={(e) => setAssignmentIds(e.target.value)}
-                      placeholder="Ej: 123, 456, 789"
-                      className="col-span-3"
-                    />
-                    <div className="col-span-4 text-xs text-muted-foreground text-right">
-                      Ingresa los IDs separados por comas
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Valor</Label>
-                    <div className="col-span-3">
-                      <Select
-                        value={assignmentValue}
-                        onValueChange={setAssignmentValue}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Seleccionar valor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {assignmentType === "lugar" &&
-                            lugares.map((lugar) => (
-                              <SelectItem key={lugar} value={lugar}>
-                                {lugar}
-                              </SelectItem>
-                            ))}
-                          {assignmentType === "ciudad" &&
-                            ciudades.map((ciudad) => (
-                              <SelectItem key={ciudad} value={ciudad}>
-                                {ciudad}
-                              </SelectItem>
-                            ))}
-                          {assignmentType === "cc" &&
-                            centrosCostos.map((cc) => (
-                              <SelectItem key={cc} value={cc}>
-                                {cc}
-                              </SelectItem>
-                            ))}
-                          {assignmentType === "antiguedad" &&
-                            antiguedades.map((antiguedad) => (
-                              <SelectItem key={antiguedad} value={antiguedad}>
-                                {antiguedad}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
         </div>
         <DialogFooter className="gap-2">
           <Button
@@ -810,17 +681,6 @@ export function EditCourseModal({
               Siguiente
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
-          ) : step === 2 ? (
-            <>
-              <Button type="button" variant="outline" onClick={handleBack}>
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Anterior
-              </Button>
-              <Button type="button" onClick={handleNext}>
-                Siguiente
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </>
           ) : (
             <>
               <Button type="button" variant="outline" onClick={handleBack}>

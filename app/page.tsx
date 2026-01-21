@@ -14,25 +14,46 @@ import {
 
 const userTypes = [
   {
-    title: "Gestión Humana",
-    subtitle: "Administradores y RR.HH.",
+    title: "Tiempo y Asistencia",
+    subtitle: "Control de horarios",
     description:
-      "Acceso completo para gestión de capacitaciones, empleados y administración del sistema",
-    icon: "/capacitaciones-icon.svg",
-    href: "/gestion-humana",
+      "Seguimiento de asistencia, registro de horas trabajadas y gestión de permisos",
+    icon: "/tiempo-icon.svg",
+    href: "https://www.sdigitales.com/Soporte/Tiempo",
     features: [
-      "Crear y gestionar cursos",
-      "Administrar empleados",
-      "Ver reportes y estadísticas",
-      "Configurar evaluaciones",
+      "Registro de entradas/salidas",
+      "Control de horas extras",
+      "Gestión de vacaciones",
+      "Reportes de asistencia",
     ],
-    buttonText: "Acceso Administrativo",
-    bgColor: "bg-green-50 dark:bg-green-950/20",
-    borderColor: "border-green-200 dark:border-green-800",
-    hoverColor: "hover:bg-green-500/80",
-    iconBg: "bg-green-500",
-    comingSoon: false,
+    // buttonText: "Próximamente",
+    bgColor: "bg-purple-50 dark:bg-purple-950/20",
+    borderColor: "border-purple-200 dark:border-purple-800",
+    hoverColor: "hover:bg-purple-500/80",
+    iconBg: "bg-purple-500",
+    // comingSoon: true,
   },
+  {
+    title: "Nómina",
+    subtitle: "Gestión de pagos",
+    description:
+      "Administración de nómina, pagos, deducciones y reportes financieros del personal",
+    icon: "/capacitaciones-icon.svg",
+    href: "https://www.sdigitales.com/Soporte/Nomina/Nomina.php",
+    features: [
+      "Procesar nómina mensual",
+      "Gestionar deducciones",
+      "Reportes de pagos",
+      "Historial salarial",
+    ],
+    buttonText: "Próximamente",
+    bgColor: "bg-blue-50 dark:bg-blue-950/20",
+    borderColor: "border-blue-200 dark:border-blue-800",
+    hoverColor: "hover:bg-blue-500/80",
+    iconBg: "bg-blue-500",
+    // comingSoon: true,
+  },
+
   {
     title: "Capacitaciones",
     subtitle: "Acceso para personal",
@@ -54,61 +75,42 @@ const userTypes = [
     comingSoon: false,
   },
   {
-    title: "Nómina",
-    subtitle: "Gestión de pagos",
+    title: "Gestión Humana",
+    subtitle: "Administradores y RR.HH.",
     description:
-      "Administración de nómina, pagos, deducciones y reportes financieros del personal",
+      "Acceso completo para gestión de capacitaciones, empleados y administración del sistema",
     icon: "/capacitaciones-icon.svg",
-    href: "#",
+    href: "/gestion-humana",
     features: [
-      "Procesar nómina mensual",
-      "Gestionar deducciones",
-      "Reportes de pagos",
-      "Historial salarial",
+      "Crear y gestionar cursos",
+      "Administrar empleados",
+      "Ver reportes y estadísticas",
+      "Configurar evaluaciones",
     ],
-    buttonText: "Próximamente",
-    bgColor: "bg-blue-50 dark:bg-blue-950/20",
-    borderColor: "border-blue-200 dark:border-blue-800",
-    hoverColor: "hover:bg-blue-500/80",
-    iconBg: "bg-blue-500",
-    comingSoon: true,
-  },
-  {
-    title: "Tiempo y Asistencia",
-    subtitle: "Control de horarios",
-    description:
-      "Seguimiento de asistencia, registro de horas trabajadas y gestión de permisos",
-    icon: "/tiempo-icon.svg",
-    href: "#",
-    features: [
-      "Registro de entradas/salidas",
-      "Control de horas extras",
-      "Gestión de vacaciones",
-      "Reportes de asistencia",
-    ],
-    buttonText: "Próximamente",
-    bgColor: "bg-purple-50 dark:bg-purple-950/20",
-    borderColor: "border-purple-200 dark:border-purple-800",
-    hoverColor: "hover:bg-purple-500/80",
-    iconBg: "bg-purple-500",
-    comingSoon: true,
+    buttonText: "Acceso Administrativo",
+    bgColor: "bg-green-50 dark:bg-green-950/20",
+    borderColor: "border-green-200 dark:border-green-800",
+    hoverColor: "hover:bg-green-500/80",
+    iconBg: "bg-green-500",
+    comingSoon: false,
   },
 ];
 
 export default function HomePage() {
   return (
     <div className="bg-background min-h-screen">
-      <div className="container mx-auto p-12">
+      <div className="max-w-6xl mx-auto p-6">
         {/* Hero Section */}
-        <div className="text-center space-y-6 mb-16">
+        <div className="text-center space-y-6 mb-16 mt-10">
           <h1 className="text-5xl font-bold text-foreground">
             Sistema de Empleados
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Selecciona tu tipo de acceso para ingresar a la plataforma de
-            gestión de recursos humanos
+            gestión de
+            <br /> recursos humanos
           </p>
-          <div className="w-24 h-1 bg-primary mx-auto rounded-full"></div>
+          <div className="w-36 h-1 bg-primary mx-auto rounded-full"></div>
         </div>
 
         {/* User Type Selection */}

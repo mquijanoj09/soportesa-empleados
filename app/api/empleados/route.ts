@@ -194,10 +194,14 @@ export async function GET(request: NextRequest) {
       }));
 
       // Separate pending and completed capacitaciones
+      // Pendientes: not graduated
       const pendientes = capacitaciones.filter(
-        (c) => !c.Realizado && !c.Cancelado
+        (c) => !c.Graduado && !c.Cancelado
       );
-      const realizadas = capacitaciones.filter((c) => c.Realizado);
+      // Realizadas: taken and graduated
+      const realizadas = capacitaciones.filter(
+        (c) => c.Realizado && c.Graduado
+      );
 
       return NextResponse.json({
         employee: {

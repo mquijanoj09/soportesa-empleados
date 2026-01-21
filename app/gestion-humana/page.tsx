@@ -18,6 +18,7 @@ export default function HomePage() {
 
   // Restore session from localStorage on mount
   useEffect(() => {
+    window.scrollTo(0, 0);
     const savedSession = localStorage.getItem("adminSession");
     if (savedSession) {
       try {
@@ -79,7 +80,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <EmployeeHeader onLogout={handleLogout} />
-      <div className="container mx-auto p-12">
+      <div className="max-w-6xl mx-auto p-6">
         <CourseList />
       </div>
     </div>
