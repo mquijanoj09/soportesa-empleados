@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
          FROM \`23_Capacitacion\` c
          LEFT JOIN \`03_InformacionPersonal\` p ON c.IdEmpleado = p.Id
          LEFT JOIN \`09_ContratoActual\` ca ON c.IdEmpleado = ca.IdEmpleado
-         WHERE c.\`IdCurso\` = ?`,
+         WHERE c.\`IdCurso\` = ? AND p.EstadoActual = 1`,
         [courseId]
       );
       const totalRecords = (countResult as any)[0].total;
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
         FROM \`23_Capacitacion\` c
         LEFT JOIN \`03_InformacionPersonal\` p ON c.IdEmpleado = p.Id
         LEFT JOIN \`09_ContratoActual\` ca ON c.IdEmpleado = ca.IdEmpleado
-        WHERE c.\`IdCurso\` = ? 
+        WHERE c.\`IdCurso\` = ? AND p.EstadoActual = 1
         ORDER BY c.Id DESC`,
         [courseId]
       );
@@ -342,10 +342,12 @@ export async function POST(request: NextRequest) {
         }
 
         employeeQuery = `
-          SELECT IdEmpleado 
-          FROM \`09_ContratoActual\` 
-          WHERE IdEmpleado IN (${ids.map(() => "?").join(",")})
-          AND IdEmpleado NOT IN (
+          SELECT ca.IdEmpleado 
+          FROM \`09_ContratoActual\` ca
+          INNER JOIN \`03_InformacionPersonal\` p ON ca.IdEmpleado = p.Id
+          WHERE ca.IdEmpleado IN (${ids.map(() => "?").join(",")})
+          AND p.EstadoActual = 1
+          AND ca.IdEmpleado NOT IN (
             SELECT IdEmpleado 
             FROM \`23_Capacitacion\` 
             WHERE IdCurso = ?
@@ -354,10 +356,12 @@ export async function POST(request: NextRequest) {
         queryParams = [...ids, courseId];
       } else if (assignmentType === "lugar") {
         employeeQuery = `
-          SELECT IdEmpleado 
-          FROM \`09_ContratoActual\` 
-          WHERE \`Lugar actual\` = ?
-          AND IdEmpleado NOT IN (
+          SELECT ca.IdEmpleado 
+          FROM \`09_ContratoActual\` ca
+          INNER JOIN \`03_InformacionPersonal\` p ON ca.IdEmpleado = p.Id
+          WHERE ca.\`Lugar actual\` = ?
+          AND p.EstadoActual = 1
+          AND ca.IdEmpleado NOT IN (
             SELECT IdEmpleado 
             FROM \`23_Capacitacion\` 
             WHERE IdCurso = ?
@@ -366,10 +370,12 @@ export async function POST(request: NextRequest) {
         queryParams = [assignmentValue, courseId];
       } else if (assignmentType === "ciudad") {
         employeeQuery = `
-          SELECT IdEmpleado 
-          FROM \`09_ContratoActual\` 
-          WHERE \`Ciudad actual\` = ?
-          AND IdEmpleado NOT IN (
+          SELECT ca.IdEmpleado 
+          FROM \`09_ContratoActual\` ca
+          INNER JOIN \`03_InformacionPersonal\` p ON ca.IdEmpleado = p.Id
+          WHERE ca.\`Ciudad actual\` = ?
+          AND p.EstadoActual = 1
+          AND ca.IdEmpleado NOT IN (
             SELECT IdEmpleado 
             FROM \`23_Capacitacion\` 
             WHERE IdCurso = ?
@@ -378,10 +384,12 @@ export async function POST(request: NextRequest) {
         queryParams = [assignmentValue, courseId];
       } else if (assignmentType === "cc") {
         employeeQuery = `
-          SELECT IdEmpleado 
-          FROM \`09_ContratoActual\` 
-          WHERE \`Centro de costos actual\` = ?
-          AND IdEmpleado NOT IN (
+          SELECT ca.IdEmpleado 
+          FROM \`09_ContratoActual\` ca
+          INNER JOIN \`03_InformacionPersonal\` p ON ca.IdEmpleado = p.Id
+          WHERE ca.\`Centro de costos actual\` = ?
+          AND p.EstadoActual = 1
+          AND ca.IdEmpleado NOT IN (
             SELECT IdEmpleado 
             FROM \`23_Capacitacion\` 
             WHERE IdCurso = ?
@@ -392,14 +400,15 @@ export async function POST(request: NextRequest) {
         employeeQuery = `
           SELECT ca.IdEmpleado 
           FROM \`09_ContratoActual\` ca
-          INNER JOIN listaReglas lr ON lr.Antiguedad = ?
-          WHERE ca.IdEmpleado NOT IN (
+          INNER JOIN \`03_InformacionPersonal\` p ON ca.IdEmpleado = p.Id
+          WHERE p.EstadoActual = 1
+          AND ca.IdEmpleado NOT IN (
             SELECT IdEmpleado 
             FROM \`23_Capacitacion\` 
             WHERE IdCurso = ?
           )
         `;
-        queryParams = [assignmentValue, courseId];
+        queryParams = [courseId];
       } else {
         await connection.end();
         return NextResponse.json(

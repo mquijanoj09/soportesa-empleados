@@ -47,6 +47,8 @@ export function CourseCard({ course }: CourseCardProps) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   const handleCardClick = () => {
     router.push(`/gestion-humana/${course.Id}`);
@@ -58,7 +60,11 @@ export function CourseCard({ course }: CourseCardProps) {
   };
 
   const handleDeleteConfirm = async () => {
+    if (isDeleting) return;
+
     try {
+      setIsDeleting(true);
+
       const response = await fetch(`/api/cursos?id=${course.Id}`, {
         method: "DELETE",
       });
@@ -78,11 +84,17 @@ export function CourseCard({ course }: CourseCardProps) {
       toast.error(
         error instanceof Error ? error.message : "Error al eliminar el curso"
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleDuplicate = async () => {
+    if (isDuplicating) return;
+
     try {
+      setIsDuplicating(true);
+
       // First, fetch the full course data including questions
       const fetchResponse = await fetch(`/api/cursos?id=${course.Id}`);
       if (!fetchResponse.ok) {
@@ -126,6 +138,8 @@ export function CourseCard({ course }: CourseCardProps) {
       toast.error(
         error instanceof Error ? error.message : "Error al duplicar el curso"
       );
+    } finally {
+      setIsDuplicating(false);
     }
   };
 
@@ -397,6 +411,7 @@ export function CourseCard({ course }: CourseCardProps) {
               type="button"
               variant="outline"
               onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
             >
               Cancelar
             </Button>
@@ -404,9 +419,10 @@ export function CourseCard({ course }: CourseCardProps) {
               type="button"
               variant="destructive"
               onClick={handleDeleteConfirm}
+              disabled={isDeleting}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Eliminar
+              {isDeleting ? "Eliminando..." : "Eliminar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -431,12 +447,17 @@ export function CourseCard({ course }: CourseCardProps) {
               type="button"
               variant="outline"
               onClick={() => setIsDuplicateOpen(false)}
+              disabled={isDuplicating}
             >
               Cancelar
             </Button>
-            <Button type="button" onClick={handleDuplicate}>
+            <Button
+              type="button"
+              onClick={handleDuplicate}
+              disabled={isDuplicating}
+            >
               <Copy className="w-4 h-4 mr-2" />
-              Duplicar
+              {isDuplicating ? "Duplicando..." : "Duplicar"}
             </Button>
           </DialogFooter>
         </DialogContent>

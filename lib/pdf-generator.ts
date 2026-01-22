@@ -96,7 +96,7 @@ function createCertificateHTML(data: CertificateData): string {
             Sistema de Gestión de Capacitaciones
           </p>
           
-          <div style="margin-top: 25px; padding: 15px; color: rgb(255, 255, 255); display: inline-block; font-weight: bold; letter-spacing: 1px; text-align: center;">
+          <div style="margin-top: 15px; padding: 15px; color: rgb(170, 0, 0); display: inline-block; font-weight: bold; letter-spacing: 1px; text-align: center;">
             Emitido el ${new Date().toLocaleDateString("es-ES", {
               year: "numeric",
               month: "long",
@@ -118,16 +118,7 @@ export async function generateCertificate(
     employeeName: employeeData.NombreCompleto || "N/A",
     cedula: employeeData.Cedula || "N/A",
     courseName: courseData.Curso || "N/A",
-    completionDate: employeeData["Fecha de terminacion"]
-      ? new Date(employeeData["Fecha de terminacion"]).toLocaleDateString(
-          "es-ES",
-          {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }
-        )
-      : "N/A",
+    completionDate: employeeData["Fecha de terminacion"],
     grade: employeeData.Nota || 0,
     certificateId: `CERT-${courseData.Id}-${employeeData.Id}-${Date.now()}`,
     lugarActual: employeeData["Lugar actual"] || "N/A",

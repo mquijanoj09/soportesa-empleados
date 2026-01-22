@@ -63,6 +63,7 @@ export function CreateCourseModal({
   onSuccess,
 }: CreateCourseModalProps) {
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [createForm, setCreateForm] = useState<CreateCourseForm>({
     nombre: "",
     entidad: "",
@@ -153,10 +154,14 @@ export function CreateCourseModal({
   };
 
   const handleCreateSubmit = async () => {
+    if (isSubmitting) return;
+
     try {
       if (!validateStep1()) {
         return;
       }
+
+      setIsSubmitting(true);
 
       const response = await fetch("/api/cursos", {
         method: "POST",
@@ -222,6 +227,8 @@ export function CreateCourseModal({
       toast.error(
         error instanceof Error ? error.message : "Error al crear el curso"
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -799,8 +806,12 @@ export function CreateCourseModal({
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Anterior
               </Button>
-              <Button type="button" onClick={handleCreateSubmit}>
-                Crear Curso
+              <Button
+                type="button"
+                onClick={handleCreateSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Creando..." : "Crear Curso"}
               </Button>
             </>
           )}

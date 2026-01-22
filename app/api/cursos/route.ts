@@ -617,7 +617,13 @@ export async function DELETE(request: Request) {
     try {
       await conn.beginTransaction();
 
-      // First, get all question IDs for this course to delete answers
+      // First, delete all capacitacion records for this course
+      const deleteCapacitacionQuery = `
+        DELETE FROM 23_Capacitacion WHERE IdCurso = ?
+      `;
+      await conn.execute(deleteCapacitacionQuery, [id]);
+
+      // Get all question IDs for this course to delete answers
       const getQuestionsQuery = `
         SELECT Id FROM cap_pregunta WHERE IdEvaluacion = ?
       `;
