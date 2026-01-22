@@ -559,16 +559,6 @@ export function CourseResults({ course }: CourseResultsProps) {
     }
   };
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  };
-
   // Custom tooltip for the pie chart
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -1428,9 +1418,9 @@ export function CourseResults({ course }: CourseResultsProps) {
             </div>
 
             <div className="pt-2 border-t text-xs text-muted-foreground">
-              <p>Terminación: {formatDate(cap["Fecha de terminacion"])}</p>
+              <p>Terminación: {cap["Fecha de terminacion"]}</p>
               {cap.FechaUltimoEmail && (
-                <p>Último email: {formatDate(cap.FechaUltimoEmail)}</p>
+                <p>Último email: {cap.FechaUltimoEmail}</p>
               )}
             </div>
           </div>
@@ -1508,9 +1498,7 @@ export function CourseResults({ course }: CourseResultsProps) {
                 <td className="px-4 py-3 text-center font-semibold">
                   {cap.Nota}
                 </td>
-                <td className="px-4 py-3">
-                  {formatDate(cap["Fecha de terminacion"])}
-                </td>
+                <td className="px-4 py-3">{cap["Fecha de terminacion"]}</td>
                 <td className="px-4 py-3 text-center">
                   {cap.CorreoEnviado ? (
                     <Mail className="w-5 h-5 text-blue-600 mx-auto" />
@@ -1518,9 +1506,7 @@ export function CourseResults({ course }: CourseResultsProps) {
                     <XCircle className="w-5 h-5 text-gray-400 mx-auto" />
                   )}
                 </td>
-                <td className="px-4 py-3">
-                  {formatDate(cap.FechaUltimoEmail)}
-                </td>
+                <td className="px-4 py-3">{cap.FechaUltimoEmail}</td>
                 <td className="px-4 py-3 text-center">
                   <Badge variant="outline">{cap.totalEnvios}</Badge>
                 </td>

@@ -36,20 +36,6 @@ export function EmployeeDashboard({
     "pendientes"
   );
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Fecha no disponible";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("es-ES", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
   const getStatusBadge = (capacitacion: Capacitacion) => {
     if (capacitacion.Graduado) {
       return <Badge className="bg-green-600">Graduado</Badge>;
@@ -266,8 +252,7 @@ export function EmployeeDashboard({
                           {getStatusBadge(capacitacion)}
                           <Badge variant="outline">
                             <Calendar className="w-3 h-3 mr-1" />
-                            Completado:{" "}
-                            {formatDate(capacitacion["Fecha de terminacion"])}
+                            Completado: {capacitacion["Fecha de terminacion"]}
                           </Badge>
                           {capacitacion.Nota > 0 && (
                             <Badge
@@ -275,8 +260,8 @@ export function EmployeeDashboard({
                                 capacitacion.Nota >= 80
                                   ? "default"
                                   : capacitacion.Nota >= 60
-                                  ? "secondary"
-                                  : "destructive"
+                                    ? "secondary"
+                                    : "destructive"
                               }
                             >
                               Nota: {capacitacion.Nota}%
